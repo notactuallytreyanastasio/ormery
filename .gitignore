@@ -1,0 +1,44 @@
+# Temper build outputs
+temper.out/
+*.class
+*.jar
+
+# Node modules
+node_modules/
+package-lock.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
+*.log
+
+# Build artifacts
+dist/
+build/
+*.o
+*.so
+*.dylib
+
+# Decision graph (keep config, exclude database)
+.deciduous/deciduous.db
+.deciduous/.graph-cache/
+
+# Claude CLI
+.claude/settings.local.json
