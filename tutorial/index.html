@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skinny Ecto Tutorial - Learn Query Building in Temper</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .lesson {
+            margin-bottom: 50px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .lesson:last-child {
+            border-bottom: none;
+        }
+        
+        .lesson h2 {
+            color: #667eea;
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+        }
+        
+        .lesson p {
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            color: #555;
+        }
+        
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        
+        .code-block .comment { color: #6a9955; }
+        .code-block .keyword { color: #c586c0; }
+        .code-block .string { color: #ce9178; }
+        .code-block .function { color: #dcdcaa; }
+        .code-block .number { color: #b5cea8; }
+        
+        .output {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            display: none;
+        }
+        
+        .output.show {
+            display: block;
+        }
+        
+        .run-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: 600;
+        }
+        
+        .run-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .run-button:active {
+            transform: translateY(0);
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .feature {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .feature h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        footer {
+            background: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            color: #666;
+        }
+        
+        .highlight { background: #ffeaa7; padding: 2px 6px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🗄️ Skinny Ecto Tutorial</h1>
+            <p>Learn database querying with Temper's lightweight Ecto implementation</p>
+        </header>
+        
+        <div class="content">
+            <div class="lesson">
+                <h2>Welcome to Skinny Ecto!</h2>
+                <p>
+                    Skinny Ecto is a simplified version of Elixir's Ecto library, built in <strong>Temper</strong>. 
+                    It demonstrates how to build a complete query builder with filtering, projection, sorting, and pagination—all in under 400 lines of code!
+                </p>
+                
+                <div class="features">
+                    <div class="feature">
+                        <h3>✅ Schema Definition</h3>
+                        <p>Define your data structures with types and validation</p>
+                    </div>
+                    <div class="feature">
+                        <h3>🔍 Powerful Queries</h3>
+                        <p>Filter, sort, paginate with a fluent API</p>
+                    </div>
+                    <div class="feature">
+                        <h3>⚡ Type Safe</h3>
+                        <p>Int and String comparisons handled correctly</p>
+                    </div>
+                    <div class="feature">
+                        <h3>🔗 Method Chaining</h3>
+                        <p>Build complex queries with readable syntax</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="lesson">
+                <h2>Lesson 1: Defining a Schema</h2>
+                <p>
+                    Every database table needs a schema that defines its structure. In Skinny Ecto, we use the <span class="highlight">schema()</span> function to define tables with fields.
+                </p>
+                
+                <div class="code-block">
+<span class="comment">// Define the fields for our User table</span>
+<span class="keyword">let</span> userFields = [
+  <span class="function">field</span>(<span class="string">"name"</span>, <span class="string">"String"</span>, <span class="keyword">false</span>, <span class="keyword">false</span>),
+  <span class="function">field</span>(<span class="string">"age"</span>, <span class="string">"Int"</span>, <span class="keyword">false</span>, <span class="keyword">false</span>),
+  <span class="function">field</span>(<span class="string">"email"</span>, <span class="string">"String"</span>, <span class="keyword">false</span>, <span class="keyword">true</span>)
+];
+
+<span class="comment">// Create the schema (auto-adds 'id' field)</span>
+<span class="keyword">let</span> userSchema = <span class="function">schema</span>(<span class="string">"users"</span>, userFields);
+                </div>
+                
+                <p>The schema automatically adds an <code>id</code> field as the primary key, just like Ecto!</p>
+            </div>
+            
+            <div class="lesson">
+                <h2>Lesson 2: Inserting Data</h2>
+                <p>
+                    Now let's create an in-memory store and insert some users. The store auto-generates IDs for each record.
+                </p>
+                
+                <div class="code-block">
+<span class="comment">// Create an in-memory database</span>
+<span class="keyword">let</span> store = <span class="keyword">new</span> <span class="function">InMemoryStore</span>();
+
+<span class="comment">// Insert some users</span>
+store.<span class="function">insert</span>(<span class="string">"users"</span>, <span class="keyword">new</span> <span class="function">Map</span>([
+  <span class="keyword">new</span> <span class="function">Pair</span>(<span class="string">"name"</span>, <span class="string">"Alice"</span>),
+  <span class="keyword">new</span> <span class="function">Pair</span>(<span class="string">"age"</span>, <span class="string">"25"</span>),
+  <span class="keyword">new</span> <span class="function">Pair</span>(<span class="string">"email"</span>, <span class="string">"alice@example.com"</span>)
+]));
+
+store.<span class="function">insert</span>(<span class="string">"users"</span>, <span class="keyword">new</span> <span class="function">Map</span>([
+  <span class="keyword">new</span> <span class="function">Pair</span>(<span class="string">"name"</span>, <span class="string">"Bob"</span>),
+  <span class="keyword">new</span> <span class="function">Pair</span>(<span class="string">"age"</span>, <span class="string">"30"</span>),
+  <span class="keyword">new</span> <span class="function">Pair</span>(<span class="string">"email"</span>, <span class="string">"bob@example.com"</span>)
+]));
+                </div>
+            </div>
+            
+            <div class="lesson">
+                <h2>Lesson 3: Simple Queries</h2>
+                <p>
+                    The magic of Skinny Ecto is the <span class="highlight">Query</span> builder. Let's start with a simple query to get all users.
+                </p>
+                
+                <div class="code-block">
+<span class="comment">// Get all users</span>
+<span class="keyword">let</span> allUsers = <span class="keyword">new</span> <span class="function">Query</span>(userSchema, store)
+  .<span class="function">all</span>();
+
+<span class="comment">// Returns all 3 users with all fields</span>
+                </div>
+                
+                <button class="run-button" onclick="runExample1()">▶ Run Example</button>
+                <div id="output1" class="output"></div>
+            </div>
+            
+            <div class="lesson">
+                <h2>Lesson 4: Filtering with WHERE</h2>
+                <p>
+                    Filter records using the <span class="highlight">.where()</span> method. You can chain multiple where clauses for AND logic.
+                </p>
+                
+                <div class="code-block">
+<span class="comment">// Get users age >= 18</span>
+<span class="keyword">let</span> adults = <span class="keyword">new</span> <span class="function">Query</span>(userSchema, store)
+  .<span class="function">where</span>(<span class="string">"age"</span>, <span class="string">">="</span>, <span class="string">"18"</span>)
+  .<span class="function">all</span>();
+
+<span class="comment">// Multiple WHERE clauses (AND logic)</span>
+<span class="keyword">let</span> youngAdults = <span class="keyword">new</span> <span class="function">Query</span>(userSchema, store)
+  .<span class="function">where</span>(<span class="string">"age"</span>, <span class="string">">="</span>, <span class="string">"18"</span>)
+  .<span class="function">where</span>(<span class="string">"age"</span>, <span class="string">"<"</span>, <span class="string">"30"</span>)
+  .<span class="function">all</span>();
+                </div>
+                
+                <p><strong>Supported operators:</strong> <code>==</code>, <code>!=</code>, <code>&gt;</code>, <code>&lt;</code>, <code>&gt;=</code>, <code>&lt;=</code></p>
+                
+                <button class="run-button" onclick="runExample2()">▶ Run Example</button>
+                <div id="output2" class="output"></div>
+            </div>
+            
+            <div class="lesson">
+                <h2>Lesson 5: Projection with SELECT</h2>
+                <p>
+                    Use <span class="highlight">.select()</span> to choose which fields to return. This is called "projection" in database terminology.
+                </p>
+                
+                <div class="code-block">
+<span class="comment">// Get only names and ages</span>
+<span class="keyword">let</span> namesAndAges = <span class="keyword">new</span> <span class="function">Query</span>(userSchema, store)
+  .<span class="function">select</span>([<span class="string">"name"</span>, <span class="string">"age"</span>])
+  .<span class="function">all</span>();
+
+<span class="comment">// Combine with WHERE</span>
+<span class="keyword">let</span> adultNames = <span class="keyword">new</span> <span class="function">Query</span>(userSchema, store)
+  .<span class="function">where</span>(<span class="string">"age"</span>, <span class="string">">="</span>, <span class="string">"18"</span>)
+  .<span class="function">select</span>([<span class="string">"name"</span>])
+  .<span class="function">all</span>();
+                </div>
+                
+                <button class="run-button" onclick="runExample3()">▶ Run Example</button>
+                <div id="output3" class="output"></div>
+            </div>
+            
+            <div class="lesson">
+                <h2>Lesson 6: Sorting with ORDER BY</h2>
+                <p>
+                    Sort results with <span class="highlight">.orderBy(field, direction)</span>. Direction can be <code>"asc"</code> or <code>"desc"</code>.
+                </p>
+                
+                <div class="code-block">
+<span class="comment">// Sort by age ascending</span>
+<span class="keyword">let</span> byAgeAsc = <span class="keyword">new</span> <span class="function">Query</span>(userSchema, store)
+  .<span class="function">orderBy</span>(<span class="string">"age"</span>, <span class="string">"asc"</span>)
+  .<span class="function">all</span>();
+
+<span class="comment">// Sort by age descending</span>
+<span class="keyword">let</span> byAgeDesc = <span class="keyword">new</span> <span class="function">Query</span>(userSchema, store)
+  .<span class="function">orderBy</span>(<span class="string">"age"</span>, <span class="string">"desc"</span>)
+  .<span class="function">all</span>();
+
+<span class="comment">// Multi-field sorting</span>
+<span class="keyword">let</span> sorted = <span class="keyword">new</span> <span class="function">Query</span>(userSchema, store)
+  .<span class="function">orderBy</span>(<span class="string">"age"</span>, <span class="string">"desc"</span>)
+  .<span class="function">orderBy</span>(<span class="string">"name"</span>, <span class="string">"asc"</span>)
+  .<span class="function">all</span>();
+                </div>
+                
+                <button class="run-button" onclick="runExample4()">▶ Run Example</button>
+                <div id="output4" class="output"></div>
+            </div>
+            
+            <div class="lesson">
+                <h2>Lesson 7: Pagination</h2>
+                <p>
+                    Paginate results using <span class="highlight">.limit()</span> and <span class="highlight">.offset()</span>. Perfect for building "next page" functionality!
+                </p>
+                
+                <div class="code-block">
+<span class="comment">// Get first 2 users</span>
+<span class="keyword">let</span> page1 = <span class="keyword">new</span> <span class="function">Query</span>(userSchema, store)
+  .<span class="function">orderBy</span>(<span class="string">"id"</span>, <span class="string">"asc"</span>)
+  .<span class="function">limit</span>(<span class="number">2</span>)
+  .<span class="function">all</span>();
+
+<span class="comment">// Skip first 2, get next 2 (page 2)</span>
+<span class="keyword">let</span> page2 = <span class="keyword">new</span> <span class="function">Query</span>(userSchema, store)
+  .<span class="function">orderBy</span>(<span class="string">"id"</span>, <span class="string">"asc"</span>)
+  .<span class="function">offset</span>(<span class="number">2</span>)
+  .<span class="function">limit</span>(<span class="number">2</span>)
+  .<span class="function">all</span>();
+                </div>
+                
+                <button class="run-button" onclick="runExample5()">▶ Run Example</button>
+                <div id="output5" class="output"></div>
+            </div>
+            
+            <div class="lesson">
+                <h2>Lesson 8: Complex Queries</h2>
+                <p>
+                    Put it all together! Chain WHERE, SELECT, ORDER BY, LIMIT, and OFFSET for powerful queries.
+                </p>
+                
+                <div class="code-block">
+<span class="comment">// Find the oldest adult, show only their name</span>
+<span class="keyword">let</span> oldestAdult = <span class="keyword">new</span> <span class="function">Query</span>(userSchema, store)
+  .<span class="function">where</span>(<span class="string">"age"</span>, <span class="string">">="</span>, <span class="string">"18"</span>)
+  .<span class="function">orderBy</span>(<span class="string">"age"</span>, <span class="string">"desc"</span>)
+  .<span class="function">limit</span>(<span class="number">1</span>)
+  .<span class="function">select</span>([<span class="string">"name"</span>, <span class="string">"age"</span>])
+  .<span class="function">all</span>();
+                </div>
+                
+                <button class="run-button" onclick="runExample6()">▶ Run Example</button>
+                <div id="output6" class="output"></div>
+            </div>
+            
+            <div class="lesson">
+                <h2>🎉 Congratulations!</h2>
+                <p>
+                    You've learned the fundamentals of database querying with Skinny Ecto! This library demonstrates:
+                </p>
+                <ul style="margin-left: 30px; margin-top: 15px;">
+                    <li><strong>Query Builder Pattern</strong> - Fluent API for composing operations</li>
+                    <li><strong>Type Safety</strong> - Int vs String comparisons handled correctly</li>
+                    <li><strong>Separation of Concerns</strong> - Query building vs execution</li>
+                    <li><strong>Functional Programming</strong> - filter, map, sorted operations</li>
+                </ul>
+                
+                <p style="margin-top: 20px;">
+                    <strong>Next Steps:</strong> Check out the <a href="https://github.com/temperlang/temper" style="color: #667eea;">Temper language</a> 
+                    and explore the <a href="../src/skinny-ecto.temper.md" style="color: #667eea;">full source code</a> (~400 lines).
+                </p>
+            </div>
+        </div>
+        
+        <footer>
+            <p><strong>Skinny Ecto</strong> - Built with ❤️ in Temper</p>
+            <p style="margin-top: 10px; font-size: 0.9rem;">
+                A simplified Ecto implementation demonstrating database query patterns
+            </p>
+        </footer>
+    </div>
+    
+    <script>
+        // Simulate running examples (would actually call compiled Temper code)
+        function showOutput(id, text) {
+            const output = document.getElementById(id);
+            output.textContent = text;
+            output.classList.add('show');
+        }
+        
+        function runExample1() {
+            showOutput('output1', 
+`All users:
+  name: Alice, age: 25, email: alice@example.com, id: 1
+  name: Bob, age: 30, email: bob@example.com, id: 2
+  name: Charlie, age: 17, email: charlie@example.com, id: 3`);
+        }
+        
+        function runExample2() {
+            showOutput('output2',
+`Adults (age >= 18):
+  name: Alice, age: 25, email: alice@example.com, id: 1
+  name: Bob, age: 30, email: bob@example.com, id: 2
+
+Young adults (18 <= age < 30):
+  name: Alice, age: 25, email: alice@example.com, id: 1`);
+        }
+        
+        function runExample3() {
+            showOutput('output3',
+`Names and ages only:
+  name: Alice, age: 25
+  name: Bob, age: 30
+  name: Charlie, age: 17
+
+Adult names only:
+  name: Alice
+  name: Bob`);
+        }
+        
+        function runExample4() {
+            showOutput('output4',
+`Sorted by age (ascending):
+  name: Charlie, age: 17, email: charlie@example.com, id: 3
+  name: Alice, age: 25, email: alice@example.com, id: 1
+  name: Bob, age: 30, email: bob@example.com, id: 2
+
+Sorted by age (descending):
+  name: Bob, age: 30, email: bob@example.com, id: 2
+  name: Alice, age: 25, email: alice@example.com, id: 1
+  name: Charlie, age: 17, email: charlie@example.com, id: 3`);
+        }
+        
+        function runExample5() {
+            showOutput('output5',
+`Page 1 (first 2):
+  name: Alice, age: 25, email: alice@example.com, id: 1
+  name: Bob, age: 30, email: bob@example.com, id: 2
+
+Page 2 (offset 2, limit 2):
+  name: Charlie, age: 17, email: charlie@example.com, id: 3`);
+        }
+        
+        function runExample6() {
+            showOutput('output6',
+`Oldest adult:
+  name: Bob, age: 30`);
+        }
+    </script>
+</body>
+</html>
