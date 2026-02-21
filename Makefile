@@ -40,7 +40,7 @@ build-py: ## Compile Temper source to Python
 	$(TEMPER) build --backend py
 	@echo "Build complete: temper.out/py/"
 
-bundle: build-js ## Build production tutorial bundle with Vite
+bundle: setup build-js ## Build production tutorial bundle with Vite
 	@echo "Bundling tutorial with Vite..."
 	npx vite build
 	@echo "Production bundle ready in dist/"
@@ -55,7 +55,7 @@ run-py: build-py ## Run the demo via Python
 test: run-py ## Run tests (Python backend)
 
 ##@ Tutorial & Demo
-serve: build-js ## Start Vite dev server for tutorial (PORT=8000)
+serve: setup build-js ## Start Vite dev server for tutorial (PORT=8000)
 	@echo "Starting Vite dev server..."
 	@echo "  Static Tutorial:       http://localhost:$(PORT)/"
 	@echo "  Interactive Playground: http://localhost:$(PORT)/interactive.html"
