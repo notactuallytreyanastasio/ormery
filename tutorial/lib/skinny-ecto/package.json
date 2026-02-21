@@ -1,0 +1,11 @@
+{
+    "name": "skinny-ecto",
+    "type": "module",
+    "exports": {
+        "./skinny_ecto": "./skinny_ecto.js",
+        ".": "./index.js"
+    },
+    "dependencies": {
+        "@temperlang/core": "0.6.0"
+    }
+}
