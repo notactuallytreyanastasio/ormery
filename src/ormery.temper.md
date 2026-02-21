@@ -1,6 +1,9 @@
 # ORMery - All-in-One Demo
 
-A simplified version of Ecto in Temper.
+A simplified version of Ecto in Temper, using secure-composition for
+injection-proof SQL generation.
+
+    let { sql, SqlFragment, SqlBuilder } = import("./sql");
 
 ## Field and Schema
 
@@ -205,56 +208,44 @@ A simplified version of Ecto in Temper.
         offsetValue = 0;
       }
 
-      // Add a where clause
       public where(field: String, operator: String, value: String): Query {
         whereClauses.add(new WhereClause(field, operator, value));
         this
       }
 
-      // Set select fields
       public select(fields: List<String>): Query {
         selectFields = fields;
         this
       }
 
-      // Add order by clause
       public orderBy(field: String, direction: String): Query {
         orderByClauses.add(new OrderClause(field, direction));
         this
       }
 
-      // Set limit
       public limit(n: Int): Query {
         limitValue = n;
         this
       }
 
-      // Set offset
       public offset(n: Int): Query {
         offsetValue = n;
         this
       }
 
-      // Check if a record matches all where clauses
       private matchesWhere(record: Record): Boolean {
         for (let clause of whereClauses.toList()) {
           let recordValue = record.getOr(clause.field, "");
-
-          // Get field type from schema
           if (!schema.hasField(clause.field)) {
             return false;
           }
-
           let fieldInfo = schema.getField(clause.field) orelse panic();
           let fieldType = fieldInfo.fieldType;
-
-          // Compare based on type
           let matches = when (fieldType) {
             "Int" -> compareInt(recordValue, clause.operator, clause.value);
             "String" -> compareString(recordValue, clause.operator, clause.value);
             else -> false;
           };
-
           if (!matches) {
             return false;
           }
@@ -262,36 +253,27 @@ A simplified version of Ecto in Temper.
         true
       }
 
-      // Project record to selected fields
       private projectRecord(record: Record): Record {
         if (selectFields.length == 0) {
           return record;
         }
-
         let builder = new MapBuilder<String, String>();
         for (let fieldName of selectFields) {
           let value = record.getOr(fieldName, "");
           builder.set(fieldName, value);
         }
-
         new Record(builder.toMap())
       }
 
-      // Compare two records for sorting
       private compareRecords(a: Record, b: Record, orderClauses: List<OrderClause>): Int {
         for (let clause of orderClauses) {
           let aVal = a.getOr(clause.field, "");
           let bVal = b.getOr(clause.field, "");
-
-          // Get field type from schema
           if (!schema.hasField(clause.field)) {
             continue;
           }
-
           let fieldInfo = schema.getField(clause.field) orelse panic();
           let fieldType = fieldInfo.fieldType;
-
-          // Compare based on type
           let cmp = when (fieldType) {
             "Int" -> do {
               let aInt = aVal.toInt32() orelse 0;
@@ -301,25 +283,18 @@ A simplified version of Ecto in Temper.
             "String" -> aVal <=> bVal;
             else -> 0;
           };
-
           if (cmp != 0) {
-            // Apply direction
             return if (clause.direction == "desc") { -cmp } else { cmp };
           }
         }
         0
       }
 
-      // Execute query
       public all(): List<Record> {
         let allRecords = store.all(schema.tableName);
-
-        // 1. Filter
         let filtered = allRecords.filter { (r: Record): Boolean =>
           matchesWhere(r)
         };
-
-        // 2. Sort
         let sorted = if (orderByClauses.length > 0) {
           let clauses = orderByClauses.toList();
           filtered.sorted { (a: Record, b: Record): Int =>
@@ -328,8 +303,6 @@ A simplified version of Ecto in Temper.
         } else {
           filtered
         };
-
-        // 3. Slice (offset and limit)
         let sliced = if (limitValue > 0) {
           let start = offsetValue;
           let end = offsetValue + limitValue;
@@ -339,17 +312,18 @@ A simplified version of Ecto in Temper.
         } else {
           sorted
         };
-
-        // 4. Project
         sliced.map { (r: Record): Record => projectRecord(r) }
+      }
+
+      public toSql(): SqlFragment {
+        toSqlQuery(schema, selectFields, whereClauses.toList(),
+                   orderByClauses.toList(), limitValue, offsetValue)
       }
     }
 
-    // Comparison helpers
     let compareInt(recordValue: String, operator: String, clauseValue: String): Boolean {
       let rv = recordValue.toInt32() orelse 0;
       let cv = clauseValue.toInt32() orelse 0;
-
       when (operator) {
         "==" -> rv == cv;
         "!=" -> rv != cv;
@@ -373,12 +347,412 @@ A simplified version of Ecto in Temper.
       }
     }
 
+## SQL Generation
+
+Pure functions that produce `SqlFragment` from query state using
+secure-composition's `sql"..."` tagged strings. Interpolated values are
+automatically escaped by type. Trusted SQL identifiers (table names, column
+names, operators) are composed via fragment nesting.
+
+### Operator validation
+
+Only allow known SQL comparison operators. Returns the operator if valid,
+or `=` as a safe fallback.
+
+    let validOperator(op: String): String {
+      when (op) {
+        "=" -> "=";
+        "==" -> "=";
+        "!=" -> "!=";
+        "<>" -> "<>";
+        ">" -> ">";
+        "<" -> "<";
+        ">=" -> ">=";
+        "<=" -> "<=";
+        else -> "=";
+      }
+    }
+
+### Trusted identifier fragment
+
+Wraps a trusted identifier (table name, column name, operator) as a
+`SqlFragment`. These come from schema definitions, not user input.
+
+    let safeSql(trusted: String): SqlFragment {
+      let b = new SqlBuilder();
+      b.appendSafe(trusted);
+      b.accumulated
+    }
+
+### Column list helper
+
+Builds the SELECT column list. If no fields specified, returns `*`.
+
+    let columnListSql(selectFields: List<String>): SqlFragment {
+      if (selectFields.length == 0) {
+        sql"*"
+      } else {
+        let first = safeSql(selectFields[0]);
+        var result = sql"${first}";
+        for (var i = 1; i < selectFields.length; i = i + 1) {
+          let col = safeSql(selectFields[i]);
+          result = sql"${result}, ${col}";
+        }
+        result
+      }
+    }
+
+### WHERE clause helper
+
+Builds a single WHERE condition. The value is untrusted user input —
+`sql"..."` escapes it by type automatically.
+
+    let whereConditionSql(clause: WhereClause, schema: Schema): SqlFragment {
+      let col = safeSql(clause.field);
+      let op = safeSql(validOperator(clause.operator));
+      let fieldType = do {
+        let f = schema.getField(clause.field) orelse null;
+        if (f != null) { f.fieldType } else { "String" }
+      };
+      if (fieldType == "Int") {
+        let intVal = clause.value.toInt32() orelse 0;
+        sql"${col} ${op} ${intVal}"
+      } else {
+        let strVal = clause.value;
+        sql"${col} ${op} ${strVal}"
+      }
+    }
+
+### ORDER BY clause helper
+
+    let orderBySql(clauses: List<OrderClause>): SqlFragment {
+      let first = safeSql(clauses[0].field);
+      let firstDir = if (clauses[0].direction == "desc") { safeSql(" DESC") } else { safeSql(" ASC") };
+      var result = sql"${first}${firstDir}";
+      for (var i = 1; i < clauses.length; i = i + 1) {
+        let col = safeSql(clauses[i].field);
+        let dir = if (clauses[i].direction == "desc") { safeSql(" DESC") } else { safeSql(" ASC") };
+        result = sql"${result}, ${col}${dir}";
+      }
+      result
+    }
+
+### Full SELECT query builder
+
+Assembles a complete SELECT statement from parts. This is the main pure
+function: it takes query state in, returns `SqlFragment` out.
+
+    export let toSqlQuery(
+      schema: Schema,
+      selectFields: List<String>,
+      whereClauses: List<WhereClause>,
+      orderClauses: List<OrderClause>,
+      limitValue: Int,
+      offsetValue: Int,
+    ): SqlFragment {
+      let table = safeSql(schema.tableName);
+      let cols = columnListSql(selectFields);
+      var result = sql"SELECT ${cols} FROM ${table}";
+      if (whereClauses.length > 0) {
+        var conditions = whereConditionSql(whereClauses[0], schema);
+        for (var i = 1; i < whereClauses.length; i = i + 1) {
+          let next = whereConditionSql(whereClauses[i], schema);
+          conditions = sql"${conditions} AND ${next}";
+        }
+        result = sql"${result} WHERE ${conditions}";
+      }
+      if (orderClauses.length > 0) {
+        let ordering = orderBySql(orderClauses);
+        result = sql"${result} ORDER BY ${ordering}";
+      }
+      if (limitValue > 0) {
+        result = sql"${result} LIMIT ${limitValue}";
+      }
+      if (offsetValue > 0) {
+        result = sql"${result} OFFSET ${offsetValue}";
+      }
+      result
+    }
+
+### INSERT statement builder
+
+Generates an INSERT statement from a schema and a map of field values.
+Field names come from the schema (trusted). Values are escaped via
+`sql"..."` by type.
+
+    export let toInsertSql(
+      schema: Schema,
+      values: Map<String, String>,
+    ): SqlFragment {
+      let table = safeSql(schema.tableName);
+      let fieldList = schema.fields.filter { (f: Field): Boolean =>
+        values.has(f.name)
+      };
+      let colNames = columnListSql(
+        fieldList.map { (f: Field): String => f.name }
+      );
+      let firstVal = values.getOr(fieldList[0].name, "");
+      var vals = if (fieldList[0].fieldType == "Int") {
+        let iv = firstVal.toInt32() orelse 0;
+        sql"${iv}"
+      } else {
+        sql"${firstVal}"
+      };
+      for (var i = 1; i < fieldList.length; i = i + 1) {
+        let val = values.getOr(fieldList[i].name, "");
+        if (fieldList[i].fieldType == "Int") {
+          let iv = val.toInt32() orelse 0;
+          vals = sql"${vals}, ${iv}";
+        } else {
+          vals = sql"${vals}, ${val}";
+        }
+      }
+      sql"INSERT INTO ${table} (${colNames}) VALUES (${vals})"
+    }
+
+## SQL Generation Tests
+
+### Basic SELECT
+
+    test("toSql: select all") {
+      let s = schema("users", [
+        field("name", "String", false, false),
+      ]);
+      let store = new InMemoryStore();
+      let q = new Query(s, store);
+      assert(q.toSql().toString() == "SELECT * FROM users");
+    }
+
+### SELECT with specific columns
+
+    test("toSql: select columns") {
+      let s = schema("users", [
+        field("name", "String", false, false),
+        field("age", "Int", false, false),
+      ]);
+      let store = new InMemoryStore();
+      let q = new Query(s, store).select(["name", "age"]);
+      assert(q.toSql().toString() == "SELECT name, age FROM users");
+    }
+
+### WHERE with string value
+
+    test("toSql: where string") {
+      let s = schema("users", [
+        field("name", "String", false, false),
+      ]);
+      let store = new InMemoryStore();
+      let q = new Query(s, store).where("name", "=", "Alice");
+      assert(q.toSql().toString() == "SELECT * FROM users WHERE name = 'Alice'");
+    }
+
+### WHERE with integer value
+
+    test("toSql: where int") {
+      let s = schema("users", [
+        field("age", "Int", false, false),
+      ]);
+      let store = new InMemoryStore();
+      let q = new Query(s, store).where("age", ">=", "18");
+      assert(q.toSql().toString() == "SELECT * FROM users WHERE age >= 18");
+    }
+
+### SQL injection protection
+
+The Bobby Tables attack string is safely escaped — single quotes are doubled.
+
+    test("toSql: SQL injection blocked") {
+      let s = schema("users", [
+        field("name", "String", false, false),
+      ]);
+      let store = new InMemoryStore();
+      let bobby = "Robert'); DROP TABLE users;--";
+      let q = new Query(s, store).where("name", "=", bobby);
+      let result = q.toSql().toString();
+      assert(result == "SELECT * FROM users WHERE name = 'Robert''); DROP TABLE users;--'");
+    }
+
+### Operator normalization
+
+The `==` operator from the in-memory query API is normalized to SQL `=`.
+
+    test("toSql: operator normalization") {
+      let s = schema("users", [
+        field("name", "String", false, false),
+      ]);
+      let store = new InMemoryStore();
+      let q = new Query(s, store).where("name", "==", "Alice");
+      assert(q.toSql().toString() == "SELECT * FROM users WHERE name = 'Alice'");
+    }
+
+### Invalid operator fallback
+
+Unknown operators fall back to `=` for safety.
+
+    test("toSql: invalid operator fallback") {
+      let s = schema("users", [
+        field("name", "String", false, false),
+      ]);
+      let store = new InMemoryStore();
+      let q = new Query(s, store).where("name", "LIKE", "Alice");
+      assert(q.toSql().toString() == "SELECT * FROM users WHERE name = 'Alice'");
+    }
+
+### Multiple WHERE clauses
+
+    test("toSql: multiple where") {
+      let s = schema("users", [
+        field("age", "Int", false, false),
+      ]);
+      let store = new InMemoryStore();
+      let q = new Query(s, store)
+        .where("age", ">=", "18")
+        .where("age", "<", "30");
+      assert(q.toSql().toString() == "SELECT * FROM users WHERE age >= 18 AND age < 30");
+    }
+
+### ORDER BY
+
+    test("toSql: order by") {
+      let s = schema("users", [
+        field("name", "String", false, false),
+      ]);
+      let store = new InMemoryStore();
+      let q = new Query(s, store).orderBy("name", "asc");
+      assert(q.toSql().toString() == "SELECT * FROM users ORDER BY name ASC");
+    }
+
+### ORDER BY descending
+
+    test("toSql: order by desc") {
+      let s = schema("users", [
+        field("age", "Int", false, false),
+      ]);
+      let store = new InMemoryStore();
+      let q = new Query(s, store).orderBy("age", "desc");
+      assert(q.toSql().toString() == "SELECT * FROM users ORDER BY age DESC");
+    }
+
+### LIMIT and OFFSET
+
+    test("toSql: limit") {
+      let s = schema("users", [
+        field("name", "String", false, false),
+      ]);
+      let store = new InMemoryStore();
+      let q = new Query(s, store).limit(10);
+      assert(q.toSql().toString() == "SELECT * FROM users LIMIT 10");
+    }
+
+    test("toSql: offset") {
+      let s = schema("users", [
+        field("name", "String", false, false),
+      ]);
+      let store = new InMemoryStore();
+      let q = new Query(s, store).offset(5);
+      assert(q.toSql().toString() == "SELECT * FROM users OFFSET 5");
+    }
+
+### Complex query
+
+    test("toSql: complex query") {
+      let s = schema("users", [
+        field("name", "String", false, false),
+        field("age", "Int", false, false),
+      ]);
+      let store = new InMemoryStore();
+      let q = new Query(s, store)
+        .select(["name", "age"])
+        .where("age", ">=", "18")
+        .orderBy("age", "desc")
+        .limit(10)
+        .offset(20);
+      assert(q.toSql().toString() ==
+        "SELECT name, age FROM users WHERE age >= 18 ORDER BY age DESC LIMIT 10 OFFSET 20");
+    }
+
+### Unicode in values
+
+    test("toSql: unicode escaping") {
+      let s = schema("users", [
+        field("name", "String", false, false),
+      ]);
+      let store = new InMemoryStore();
+      let q = new Query(s, store).where("name", "=", "Hello 世界");
+      assert(q.toSql().toString() == "SELECT * FROM users WHERE name = 'Hello 世界'");
+    }
+
+### Embedded quotes in values
+
+    test("toSql: embedded quotes") {
+      let s = schema("users", [
+        field("name", "String", false, false),
+      ]);
+      let store = new InMemoryStore();
+      let q = new Query(s, store).where("name", "=", "O'Brien");
+      assert(q.toSql().toString() == "SELECT * FROM users WHERE name = 'O''Brien'");
+    }
+
+### Empty string value
+
+    test("toSql: empty string") {
+      let s = schema("users", [
+        field("name", "String", false, false),
+      ]);
+      let store = new InMemoryStore();
+      let q = new Query(s, store).where("name", "=", "");
+      assert(q.toSql().toString() == "SELECT * FROM users WHERE name = ''");
+    }
+
+### INSERT statement
+
+    test("toInsertSql: basic insert") {
+      let s = schema("users", [
+        field("name", "String", false, false),
+        field("age", "Int", false, false),
+      ]);
+      let vals = new Map<String, String>([
+        new Pair("name", "Alice"),
+        new Pair("age", "25"),
+      ]);
+      let result = toInsertSql(s, vals);
+      assert(result.toString() == "INSERT INTO users (name, age) VALUES ('Alice', 25)");
+    }
+
+### INSERT with injection protection
+
+    test("toInsertSql: injection blocked") {
+      let s = schema("users", [
+        field("name", "String", false, false),
+      ]);
+      let vals = new Map<String, String>([
+        new Pair("name", "Robert'); DROP TABLE users;--"),
+      ]);
+      let result = toInsertSql(s, vals);
+      assert(result.toString() ==
+        "INSERT INTO users (name) VALUES ('Robert''); DROP TABLE users;--')");
+    }
+
+### toSqlQuery as standalone pure function
+
+    test("toSqlQuery: standalone") {
+      let s = schema("users", [
+        field("name", "String", false, false),
+        field("age", "Int", false, false),
+      ]);
+      let result = toSqlQuery(
+        s, ["name"], [new WhereClause("age", ">", "21")],
+        [new OrderClause("name", "asc")], 5, 0,
+      );
+      assert(result.toString() ==
+        "SELECT name FROM users WHERE age > 21 ORDER BY name ASC LIMIT 5");
+    }
+
 ## Demo
 
     export let main(): Void {
       console.log("=== ORMery Demo ===\n");
 
-      // Define schema
       let userFields = [
         field("name", "String", false, false),
         field("age", "Int", false, false),
@@ -389,7 +763,6 @@ A simplified version of Ecto in Temper.
       console.log(userSchema.describe());
       console.log("");
 
-      // Create store and insert data
       let store = new InMemoryStore();
 
       let rec1 = store.insert("users", new Map<String, String>([
@@ -416,16 +789,16 @@ A simplified version of Ecto in Temper.
       console.log("  ${rec3.describe()}");
       console.log("");
 
-      // Basic query - all users
-      console.log("=== Query 1: All users ===");
+      console.log("=== In-Memory Queries ===\n");
+
+      console.log("All users:");
       let allUsers = new Query(userSchema, store).all();
       for (let u of allUsers) {
         console.log("  ${u.describe()}");
       }
       console.log("");
 
-      // Query with where clause - adults only
-      console.log("=== Query 2: Users age >= 18 ===");
+      console.log("Adults (age >= 18):");
       let adults = new Query(userSchema, store)
         .where("age", ">=", "18")
         .all();
@@ -434,103 +807,28 @@ A simplified version of Ecto in Temper.
       }
       console.log("");
 
-      // Query with select - project specific fields
-      console.log("=== Query 3: Just names and ages ===");
-      let namesAndAges = new Query(userSchema, store)
+      console.log("=== SQL Generation (secure-composition) ===\n");
+
+      let q1 = new Query(userSchema, store);
+      console.log("SELECT all: ${q1.toSql().toString()}");
+
+      let q2 = new Query(userSchema, store)
         .select(["name", "age"])
-        .all();
-      for (let u of namesAndAges) {
-        console.log("  ${u.describe()}");
-      }
-      console.log("");
-
-      // Combined where + select
-      console.log("=== Query 4: Adult names only ===");
-      let adultNames = new Query(userSchema, store)
-        .where("age", ">=", "18")
-        .select(["name"])
-        .all();
-      for (let u of adultNames) {
-        console.log("  ${u.describe()}");
-      }
-      console.log("");
-
-      // Multiple where clauses (AND logic)
-      console.log("=== Query 5: Age >= 18 AND age < 30 ===");
-      let youngAdults = new Query(userSchema, store)
-        .where("age", ">=", "18")
-        .where("age", "<", "30")
-        .all();
-      for (let u of youngAdults) {
-        console.log("  ${u.describe()}");
-      }
-      console.log("");
-
-      // Order by ascending
-      console.log("=== Query 6: All users ordered by age (asc) ===");
-      let byAgeAsc = new Query(userSchema, store)
-        .orderBy("age", "asc")
-        .all();
-      for (let u of byAgeAsc) {
-        console.log("  ${u.describe()}");
-      }
-      console.log("");
-
-      // Order by descending
-      console.log("=== Query 7: All users ordered by age (desc) ===");
-      let byAgeDesc = new Query(userSchema, store)
-        .orderBy("age", "desc")
-        .all();
-      for (let u of byAgeDesc) {
-        console.log("  ${u.describe()}");
-      }
-      console.log("");
-
-      // Limit
-      console.log("=== Query 8: First 2 users (limit) ===");
-      let first2 = new Query(userSchema, store)
-        .orderBy("id", "asc")
-        .limit(2)
-        .all();
-      for (let u of first2) {
-        console.log("  ${u.describe()}");
-      }
-      console.log("");
-
-      // Offset
-      console.log("=== Query 9: Skip first user (offset) ===");
-      let skip1 = new Query(userSchema, store)
-        .orderBy("id", "asc")
-        .offset(1)
-        .all();
-      for (let u of skip1) {
-        console.log("  ${u.describe()}");
-      }
-      console.log("");
-
-      // Limit + Offset (pagination)
-      console.log("=== Query 10: Page 2, size 1 (offset + limit) ===");
-      let page2 = new Query(userSchema, store)
-        .orderBy("id", "asc")
-        .offset(1)
-        .limit(1)
-        .all();
-      for (let u of page2) {
-        console.log("  ${u.describe()}");
-      }
-      console.log("");
-
-      // Complex: where + orderBy + limit
-      console.log("=== Query 11: Oldest adult (where + orderBy + limit) ===");
-      let oldestAdult = new Query(userSchema, store)
         .where("age", ">=", "18")
         .orderBy("age", "desc")
-        .limit(1)
-        .all();
-      for (let u of oldestAdult) {
-        console.log("  ${u.describe()}");
-      }
-      console.log("");
+        .limit(10);
+      console.log("Complex:    ${q2.toSql().toString()}");
 
-      console.log("=== Demo Complete ===");
+      let bobby = "Robert'); DROP TABLE users;--";
+      let q3 = new Query(userSchema, store)
+        .where("name", "=", bobby);
+      console.log("Injection:  ${q3.toSql().toString()}");
+
+      let insertVals = new Map<String, String>([
+        new Pair("name", "O'Malley"),
+        new Pair("age", "42"),
+      ]);
+      console.log("INSERT:     ${toInsertSql(userSchema, insertVals).toString()}");
+
+      console.log("\n=== Demo Complete ===");
     }
