@@ -1,8 +1,8 @@
 {
-    "name": "skinny-ecto",
+    "name": "ormery",
     "type": "module",
     "exports": {
-        "./skinny_ecto": "./skinny_ecto.js",
+        "./ormery": "./ormery.js",
         ".": "./index.js"
     },
     "dependencies": {

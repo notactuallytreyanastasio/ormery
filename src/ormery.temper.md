@@ -1,4 +1,4 @@
-# Skinny Ecto - All-in-One Demo
+# ORMery - All-in-One Demo
 
 A simplified version of Ecto in Temper.
 
@@ -376,7 +376,7 @@ A simplified version of Ecto in Temper.
 ## Demo
 
     export let main(): Void {
-      console.log("=== Skinny Ecto Demo ===\n");
+      console.log("=== ORMery Demo ===\n");
 
       // Define schema
       let userFields = [

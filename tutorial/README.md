@@ -1,6 +1,6 @@
-# 🚀 Skinny Ecto Interactive Tutorial
+# 🚀 ORMery Interactive Tutorial
 
-Three ways to learn Skinny Ecto - from beginner-friendly to fully interactive!
+Three ways to learn ORMery - from beginner-friendly to fully interactive!
 
 ## 📚 Tutorial Options
 
@@ -21,10 +21,10 @@ open index.html
 
 ### 2. Interactive Playground (`interactive.html`) ⭐ RECOMMENDED
 **Best for: Hands-on experimentation**
-- **Live Code Editor** - Edit and run real Skinny Ecto code
+- **Live Code Editor** - Edit and run real ORMery code
 - **Visual Query Builder** - Build queries with form inputs
 - **Example Library** - 8 ready-to-run examples
-- Full JavaScript implementation of Skinny Ecto
+- Full JavaScript implementation of ORMery
 - All features working in-browser
 
 **Features:**
@@ -50,7 +50,7 @@ cd tutorial && python3 -m http.server 8000
 **Best for: Integration with Temper projects**
 - Uses actual compiled Temper → JavaScript output
 - Same API as Temper version
-- For developers integrating Skinny Ecto
+- For developers integrating ORMery
 
 ## 🎯 Quick Start
 
@@ -113,7 +113,7 @@ let adults = new Query(userSchema, store)
 ## 🔧 Technical Details
 
 **Interactive Implementation:**
-- Pure JavaScript reimplementation of Skinny Ecto
+- Pure JavaScript reimplementation of ORMery
 - All features: Field, Schema, Record, InMemoryStore, Query
 - Type-aware comparisons (Int vs String)
 - Full query execution pipeline
@@ -179,7 +179,7 @@ Works in all modern browsers:
 ## 🎓 Next Steps
 
 After mastering the tutorial:
-1. Check out the [full source code](../src/skinny-ecto.temper.md)
+1. Check out the [full source code](../src/ormery.temper.md)
 2. Learn about the [Temper language](https://github.com/temperlang/temper)
 3. Read the [design document](../../docs/SKINNY_ECTO_DESIGN.md)
 4. Explore the [decision graph](../../docs/)

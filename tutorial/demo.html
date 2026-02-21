@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skinny Ecto - Powered by Real Temper Code</title>
+    <title>ORMery - Powered by Real Temper Code</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -117,7 +117,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>⚡ Skinny Ecto Demo</h1>
+            <h1>⚡ ORMery Demo</h1>
             <p>Powered by Real Temper-Compiled JavaScript</p>
             <div class="badge">🔥 Using Actual Temper Output</div>
         </header>
@@ -126,7 +126,7 @@
             <div class="demo-section">
                 <h2>🎯 What This Is</h2>
                 <p>
-                    This demo runs <strong>actual Temper-compiled JavaScript</strong> from skinny-ecto.temper.md. 
+                    This demo runs <strong>actual Temper-compiled JavaScript</strong> from ormery.temper.md. 
                     The code you see executing below is the real output from the Temper compiler, not a JavaScript reimplementation.
                 </p>
             </div>
@@ -163,10 +163,10 @@
     </div>
     
     <script type="module">
-        import { Field, Schema, field, schema, Record, InMemoryStore, Query } from './lib/skinny-ecto/skinny_ecto.js';
+        import { Field, Schema, field, schema, Record, InMemoryStore, Query } from './lib/ormery/ormery.js';
         
         // Make available globally for button onclick
-        window.SkinnyEcto = { Field, Schema, field, schema, Record, InMemoryStore, Query };
+        window.ORMery = { Field, Schema, field, schema, Record, InMemoryStore, Query };
         
         // Create demo data
         const userFields = [
@@ -326,7 +326,7 @@
             updateStats();
         };
         
-        console.log('✅ Temper-compiled Skinny Ecto loaded successfully!');
+        console.log('✅ Temper-compiled ORMery loaded successfully!');
         console.log('Schema:', userSchema);
         console.log('Store:', store);
     </script>

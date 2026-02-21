@@ -1,4 +1,4 @@
-# Skinny Ecto - Project Instructions
+# ORMery - Project Instructions
 
 ## Overview
 
@@ -19,7 +19,7 @@ A simplified Ecto implementation in Temper demonstrating query builders, schemas
 temper build --backend js
 
 # Run demo
-node temper.out/skinny-ecto.js
+node temper.out/ormery.js
 
 # Run tests
 ./run-python.py
@@ -72,7 +72,7 @@ deciduous sync           # Export for GitHub Pages
 ## Git Workflow
 
 **ALWAYS stage files explicitly:**
-- ✅ `git add src/skinny-ecto.temper.md`
+- ✅ `git add src/ormery.temper.md`
 - ✅ `git add tutorial/index.html`
 - ❌ `git add .` or `git add -A` (NEVER use these)
 

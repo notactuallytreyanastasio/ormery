@@ -1,6 +1,6 @@
 # Demo Controller
 
-Business logic for the Skinny Ecto tutorial demo, written in Temper.
+Business logic for the ORMery tutorial demo, written in Temper.
 
 ## DemoController Class
 

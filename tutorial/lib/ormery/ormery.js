@@ -818,7 +818,7 @@ function compareString_201(recordValue_284, operator_285, clauseValue_286) {
   return return_287;
 }
 export function main() {
-  console_0.log("=== Skinny Ecto Demo ===\n");
+  console_0.log("=== ORMery Demo ===\n");
   const userFields_289 = Object.freeze([field("name", "String", false, false), field("age", "Int", false, false), field("email", "String", false, true)]);
   const userSchema_290 = schema("users", userFields_289);
   let t_291 = userSchema_290.describe();

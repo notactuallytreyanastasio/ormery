@@ -1,4 +1,4 @@
-# Skinny Ecto
+# ORMery
 
 A simplified, in-memory implementation of [Ecto](https://hexdocs.pm/ecto/Ecto.html) (Elixir's database library) written in [Temper](https://github.com/temperlang/temper). Demonstrates composable query building, type-safe schemas, and literate programming.
 
@@ -21,7 +21,7 @@ A simplified, in-memory implementation of [Ecto](https://hexdocs.pm/ecto/Ecto.ht
 
 ## Overview
 
-Skinny Ecto showcases what Temper can do by implementing a real query builder pattern from scratch. It compiles to both JavaScript and Python, runs in the browser via pre-compiled modules, and ships with three interactive tutorial sites.
+ORMery showcases what Temper can do by implementing a real query builder pattern from scratch. It compiles to both JavaScript and Python, runs in the browser via pre-compiled modules, and ships with three interactive tutorial sites.
 
 **What you get:**
 
@@ -52,7 +52,7 @@ Or manually:
 
 ```bash
 temper build --backend js            # Compile
-node temper.out/js/skinny-ecto/skinny_ecto.js  # Run CLI demo
+node temper.out/js/ormery/ormery.js            # Run CLI demo
 cd tutorial && python3 -m http.server 8000     # Serve tutorials
 # Open http://localhost:8000/interactive.html
 ```
@@ -114,11 +114,11 @@ Multiple `.where()` calls combine with AND logic. Multiple `.orderBy()` calls ap
 ## Project Structure
 
 ```
-skinny-ecto/
+ormery/
 ├── Makefile                          # Build, run, serve, deploy commands
 ├── src/
 │   ├── config.temper.md              # Library configuration (name export)
-│   ├── skinny-ecto.temper.md         # Core implementation (537 lines)
+│   ├── ormery.temper.md              # Core implementation (537 lines)
 │   │   ├── Field & Schema            #   Type-safe table definitions
 │   │   ├── Record & InMemoryStore    #   Storage with auto-increment IDs
 │   │   ├── Query Builder             #   Chainable query API
@@ -135,9 +135,9 @@ skinny-ecto/
 │   ├── bundle-temper.sh              # Copy compiled JS to tutorial/lib
 │   ├── README.md                     # Tutorial-specific documentation
 │   └── lib/                          # Pre-compiled JavaScript modules
-│       ├── skinny-ecto/              #   Compiled Skinny Ecto (v0.6.0)
-│       │   ├── skinny_ecto.js        #   Main module (~27 KB)
-│       │   ├── skinny_ecto.js.map    #   Source map
+│       ├── ormery/                   #   Compiled ORMery (v0.6.0)
+│       │   ├── ormery.js            #   Main module (~27 KB)
+│       │   ├── ormery.js.map        #   Source map
 │       │   ├── index.js              #   Re-export entry point
 │       │   └── package.json          #   Module metadata
 │       └── temper-core/              #   Temper runtime library (v0.6.0)
@@ -242,7 +242,7 @@ Custom port: `make serve PORT=3000`
 ```bash
 # JavaScript backend
 temper build --backend js
-node temper.out/js/skinny-ecto/skinny_ecto.js
+node temper.out/js/ormery/ormery.js
 
 # Python backend
 temper build --backend py
@@ -251,7 +251,7 @@ temper build --backend py
 # Bundle for browser
 mkdir -p tutorial/lib
 cp -r temper.out/js/temper-core tutorial/lib/
-cp -r temper.out/js/skinny-ecto tutorial/lib/
+cp -r temper.out/js/ormery tutorial/lib/
 ```
 
 ## Running the Demo
@@ -267,7 +267,7 @@ make run
 Output:
 
 ```
-=== Skinny Ecto Demo ===
+=== ORMery Demo ===
 
 Schema: users
   - id: Int (PK)
@@ -302,14 +302,14 @@ make open     # Opens interactive playground
 
 ## Tutorial Sites
 
-Three ways to explore Skinny Ecto, from reading to hands-on:
+Three ways to explore ORMery, from reading to hands-on:
 
 ### 1. Static Tutorial (`index.html`)
 
 Eight progressive lessons with pre-rendered code examples. Best for reading and understanding the concepts.
 
 **Lessons covered:**
-1. What is Skinny Ecto?
+1. What is ORMery?
 2. Defining schemas and fields
 3. Creating an in-memory store
 4. Inserting records
@@ -322,7 +322,7 @@ Eight progressive lessons with pre-rendered code examples. Best for reading and 
 
 **The recommended starting point.** A full in-browser IDE with three tabs:
 
-- **Code Editor** - Write and run Skinny Ecto code with live output
+- **Code Editor** - Write and run ORMery code with live output
 - **Query Builder** - Visual form-based query construction
 - **Examples** - 8 ready-to-run examples demonstrating all features
 
@@ -447,9 +447,9 @@ This prevents the common pitfall where `"8" > "25"` in naive string comparison.
 
 ## Source Code Guide
 
-All source is written in Temper's literate programming format (`.temper.md`), where prose and code are interleaved in Markdown files. Code blocks indented with 4 spaces (in `skinny-ecto.temper.md`) or fenced with triple backticks are compiled; everything else is documentation.
+All source is written in Temper's literate programming format (`.temper.md`), where prose and code are interleaved in Markdown files. Code blocks indented with 4 spaces (in `ormery.temper.md`) or fenced with triple backticks are compiled; everything else is documentation.
 
-### `src/skinny-ecto.temper.md` (537 lines)
+### `src/ormery.temper.md` (537 lines)
 
 The core library. Sections:
 
@@ -470,7 +470,7 @@ A syntax highlighter for Temper code, written in Temper. Tokenizes source into k
 
 ### `src/config.temper.md` (11 lines)
 
-Library configuration. Exports `name = "skinny-ecto"` for the Temper build system.
+Library configuration. Exports `name = "ormery"` for the Temper build system.
 
 ## Decision Graph
 
@@ -547,7 +547,7 @@ Always stage files explicitly:
 
 ```bash
 # Good
-git add src/skinny-ecto.temper.md tutorial/interactive.html
+git add src/ormery.temper.md tutorial/interactive.html
 
 # Bad - never do this
 git add .

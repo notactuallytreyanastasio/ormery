@@ -1,4 +1,4 @@
-# Skinny Ecto - Makefile
+# ORMery - Makefile
 # A simplified Ecto implementation in Temper
 #
 # Usage: make help
@@ -21,7 +21,7 @@ RESET := \033[0m
 
 ##@ General
 help: ## Show this help message
-	@echo "Skinny Ecto - Simplified Ecto in Temper"
+	@echo "ORMery - Simplified Ecto in Temper"
 	@echo ""
 	@awk 'BEGIN {FS = ":.*##"; printf "Usage: make $(CYAN)<target>$(RESET)\n\n"} \
 		/^##@/ { printf "\n$(GREEN)%s$(RESET)\n", substr($$0, 5) } \
@@ -44,12 +44,12 @@ bundle: build-js ## Bundle compiled JS into tutorial/lib for browser use
 	@echo "Bundling compiled JS for browser..."
 	@mkdir -p tutorial/lib
 	cp -r temper.out/js/temper-core tutorial/lib/
-	cp -r temper.out/js/skinny-ecto tutorial/lib/
+	cp -r temper.out/js/ormery tutorial/lib/
 	@echo "Bundle ready in tutorial/lib/"
 
 ##@ Run
 run: build-js ## Run the demo via Node.js
-	node temper.out/js/skinny-ecto/skinny_ecto.js
+	node temper.out/js/ormery/ormery.js
 
 run-py: build-py ## Run the demo via Python
 	./run-python.py
@@ -111,7 +111,7 @@ clean-build: ## Remove Temper compilation output
 	@echo "Removed temper.out/"
 
 clean-bundle: ## Remove bundled JS from tutorial/lib
-	rm -rf tutorial/lib/temper-core tutorial/lib/skinny-ecto
+	rm -rf tutorial/lib/temper-core tutorial/lib/ormery
 	rm -rf tutorial/bundle
 	@echo "Removed tutorial/lib/ bundles"
 

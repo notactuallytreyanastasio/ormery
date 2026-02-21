@@ -1,7 +1,7 @@
 #!/bin/bash
 # Build browser bundle from compiled Temper JS
 
-echo "📦 Building Skinny Ecto browser bundle..."
+echo "📦 Building ORMery browser bundle..."
 
 cd "$(dirname "$0")/.."
 
@@ -28,4 +28,4 @@ echo "The interactive tutorial includes:"
 echo "  ✓ Live code editor"
 echo "  ✓ Visual query builder"
 echo "  ✓ 8 example queries"
-echo "  ✓ Full Skinny Ecto API"
+echo "  ✓ Full ORMery API"

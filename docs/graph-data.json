@@ -103,7 +103,7 @@
       "id": 10,
       "change_id": "bfa17b27-2050-4b5c-915a-51866235b25d",
       "node_type": "goal",
-      "title": "Build skinny version of Ecto",
+      "title": "Build ORMery (skinny version of Ecto)",
       "description": null,
       "status": "pending",
       "created_at": "2026-02-21T16:51:01.027602512+00:00",
@@ -125,7 +125,7 @@
       "id": 12,
       "change_id": "4f19ce7a-21f3-4c23-9245-76d47751b109",
       "node_type": "goal",
-      "title": "Build skinny Ecto in Temper",
+      "title": "Build ORMery in Temper",
       "description": null,
       "status": "pending",
       "created_at": "2026-02-21T17:32:12.039924047+00:00",
@@ -136,7 +136,7 @@
       "id": 13,
       "change_id": "ac2b374a-4732-4d17-84fa-eeb1f2848d7d",
       "node_type": "action",
-      "title": "Create design document for skinny Ecto",
+      "title": "Create design document for ORMery",
       "description": null,
       "status": "pending",
       "created_at": "2026-02-21T17:32:22.338961677+00:00",
@@ -433,7 +433,7 @@
       "id": 40,
       "change_id": "71403f02-f3b0-4822-bce9-2ab7bf4c52d2",
       "node_type": "goal",
-      "title": "Build interactive tutorial site for Skinny Ecto",
+      "title": "Build interactive tutorial site for ORMery",
       "description": null,
       "status": "pending",
       "created_at": "2026-02-21T18:21:41.002069880+00:00",
@@ -521,7 +521,7 @@
       "id": 48,
       "change_id": "e18182e1-3ad1-4794-9b49-8b1e89888d73",
       "node_type": "outcome",
-      "title": "Complete Skinny Ecto implementation committed (all 3 phases)",
+      "title": "Complete ORMery implementation committed (all 3 phases)",
       "description": null,
       "status": "pending",
       "created_at": "2026-02-21T18:35:31.994436584+00:00",
@@ -824,7 +824,7 @@
       "to_change_id": "5dc1a49a-226b-40df-a636-c09e12d6566d",
       "edge_type": "leads_to",
       "weight": 1.0,
-      "rationale": "First major design decision for skinny Ecto",
+      "rationale": "First major design decision for ORMery",
       "created_at": "2026-02-21T17:43:09.176354338+00:00"
     },
     {
@@ -890,7 +890,7 @@
       "to_change_id": "4f19ce7a-21f3-4c23-9245-76d47751b109",
       "edge_type": "leads_to",
       "weight": 1.0,
-      "rationale": "Ecto knowledge informs Skinny Ecto design decisions",
+      "rationale": "Ecto knowledge informs ORMery design decisions",
       "created_at": "2026-02-21T17:44:28.740836264+00:00"
     },
     {
@@ -1044,7 +1044,7 @@
       "to_change_id": "71403f02-f3b0-4822-bce9-2ab7bf4c52d2",
       "edge_type": "leads_to",
       "weight": 1.0,
-      "rationale": "Interactive tutorial to showcase Skinny Ecto",
+      "rationale": "Interactive tutorial to showcase ORMery",
       "created_at": "2026-02-21T18:21:42.267718422+00:00"
     },
     {
