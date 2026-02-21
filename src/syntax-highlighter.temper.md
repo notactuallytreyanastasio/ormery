@@ -1,8 +1,11 @@
 # Temper Syntax Highlighter
 
-A syntax highlighter for Temper code, written in Temper. Uses Temper's
-available String and List primitives: split, comparison, template strings,
-and list operations.
+A syntax highlighter for Temper code, written in Temper. Uses
+secure-composition's `html"..."` tagged strings for contextual
+auto-escaping — values interpolated into element content are
+HTML-entity-encoded automatically.
+
+    let { html, SafeHtml } = import("./html");
 
 ## Token Types
 
@@ -14,30 +17,6 @@ and list operations.
       public get isComment(): Boolean { name == "comment" }
       public get isOperator(): Boolean { name == "operator" }
       public get isIdentifier(): Boolean { name == "identifier" }
-    }
-
-## HTML Escaping
-
-Escapes HTML metacharacters to prevent XSS when rendering source code
-into HTML. Uses the same code-point iteration pattern as `SqlString`
-escaping in the SQL module.
-
-    let escapeHtml(text: String): String {
-      let builder = new StringBuilder();
-      for (let c of text) {
-        if (c == char'&') {
-          builder.append("&amp;");
-        } else if (c == char'<') {
-          builder.append("&lt;");
-        } else if (c == char'>') {
-          builder.append("&gt;");
-        } else if (c == char'"') {
-          builder.append("&quot;");
-        } else {
-          builder.appendCodePoint(c) orelse panic();
-        }
-      }
-      builder.toString()
     }
 
 ## Token
@@ -59,10 +38,9 @@ escaping in the SQL module.
         }
       }
 
-      public toHtml(): String {
+      public toHtml(): SafeHtml {
         let cls = cssClass();
-        let escaped = escapeHtml(value);
-        "<span class=\"${cls}\">${escaped}</span>"
+        html"<span class='${cls}'>${value}</span>"
       }
     }
 
@@ -106,28 +84,42 @@ Since Temper's String type works with code points and StringIndex rather than
 integer-indexed substring operations, we use a word-level approach: split each
 line by spaces and classify each token.
 
-    export let highlightWord(word: String): String {
+    export let highlightWord(word: String): SafeHtml {
       if (word == "") {
-        return "";
+        return html"";
       }
       let tokenType = classifyWord(word);
       let token = new Token(tokenType, word);
       token.toHtml()
     }
 
-    export let highlightLine(line: String): String {
+    export let highlightLine(line: String): SafeHtml {
       let words = line.split(" ");
-      let highlighted = words.map { (w: String): String => highlightWord(w) };
-      highlighted.join(" ") { (s: String): String => s }
+      if (words.length == 0) {
+        return html"";
+      }
+      var result = highlightWord(words[0]);
+      for (var i = 1; i < words.length; i = i + 1) {
+        let word = highlightWord(words[i]);
+        result = html"${result} ${word}";
+      }
+      result
     }
 
-    export let highlightSource(source: String): String {
+    export let highlightSource(source: String): SafeHtml {
       let lines = source.split("\n");
-      let highlighted = lines.map { (line: String): String => highlightLine(line) };
-      highlighted.join("\n") { (s: String): String => s }
+      if (lines.length == 0) {
+        return html"";
+      }
+      var result = highlightLine(lines[0]);
+      for (var i = 1; i < lines.length; i = i + 1) {
+        let line = highlightLine(lines[i]);
+        result = html"${result}\n${line}";
+      }
+      result
     }
 
-    export let highlightBlock(source: String): String {
+    export let highlightBlock(source: String): SafeHtml {
       let highlighted = highlightSource(source);
-      "<pre class=\"temper-code\"><code>${highlighted}</code></pre>"
+      html"<pre class='temper-code'><code>${highlighted}</code></pre>"
     }
