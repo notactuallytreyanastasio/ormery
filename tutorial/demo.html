@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skinny Ecto - Powered by Real Temper Code</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .badge {
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .demo-section {
+            margin-bottom: 40px;
+        }
+        
+        h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .code-output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            white-space: pre-wrap;
+            margin: 15px 0;
+        }
+        
+        .success { color: #27ae60; }
+        .info { color: #3498db; }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px 10px 10px 0;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚡ Skinny Ecto Demo</h1>
+            <p>Powered by Real Temper-Compiled JavaScript</p>
+            <div class="badge">🔥 Using Actual Temper Output</div>
+        </header>
+        
+        <div class="content">
+            <div class="demo-section">
+                <h2>🎯 What This Is</h2>
+                <p>
+                    This demo runs <strong>actual Temper-compiled JavaScript</strong> from skinny-ecto.temper.md. 
+                    The code you see executing below is the real output from the Temper compiler, not a JavaScript reimplementation.
+                </p>
+            </div>
+            
+            <div class="grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="record-count">0</div>
+                    <div class="stat-label">Records in Store</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="adult-count">0</div>
+                    <div class="stat-label">Adults (age ≥ 18)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="query-count">0</div>
+                    <div class="stat-label">Queries Run</div>
+                </div>
+            </div>
+            
+            <div class="demo-section">
+                <h2>📊 Demo Controls</h2>
+                <button onclick="runDemo1()">Demo 1: All Users</button>
+                <button onclick="runDemo2()">Demo 2: Filter Adults</button>
+                <button onclick="runDemo3()">Demo 3: Sort by Age</button>
+                <button onclick="runDemo4()">Demo 4: Pagination</button>
+                <button onclick="runDemo5()">Demo 5: Complex Query</button>
+            </div>
+            
+            <div class="demo-section">
+                <h2>💻 Output</h2>
+                <div id="output" class="code-output">Click a demo button to run Temper-compiled code...</div>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module">
+        import { Field, Schema, field, schema, Record, InMemoryStore, Query } from './lib/skinny-ecto/skinny_ecto.js';
+        
+        // Make available globally for button onclick
+        window.SkinnyEcto = { Field, Schema, field, schema, Record, InMemoryStore, Query };
+        
+        // Create demo data
+        const userFields = [
+            field("name", "String", false, false),
+            field("age", "Int", false, false),
+            field("email", "String", false, true)
+        ];
+        
+        const userSchema = schema("users", userFields);
+        const store = new InMemoryStore();
+        
+        // Insert demo data
+        store.insert("users", new Map([
+            new Map.Pair("name", "Alice"),
+            new Map.Pair("age", "25"),
+            new Map.Pair("email", "alice@example.com")
+        ]));
+        
+        store.insert("users", new Map([
+            new Map.Pair("name", "Bob"),
+            new Map.Pair("age", "30"),
+            new Map.Pair("email", "bob@example.com")
+        ]));
+        
+        store.insert("users", new Map([
+            new Map.Pair("name", "Charlie"),
+            new Map.Pair("age", "17"),
+            new Map.Pair("email", "charlie@example.com")
+        ]));
+        
+        window.demoStore = store;
+        window.demoSchema = userSchema;
+        
+        // Update stats
+        document.getElementById('record-count').textContent = store.count("users");
+        
+        let queryCount = 0;
+        
+        function updateStats() {
+            const adults = new Query(userSchema, store).where("age", ">=", "18").all();
+            document.getElementById('adult-count').textContent = adults.length;
+            document.getElementById('query-count').textContent = ++queryCount;
+        }
+        
+        updateStats();
+        
+        function output(text) {
+            document.getElementById('output').textContent = text;
+        }
+        
+        // Demo 1: All Users
+        window.runDemo1 = function() {
+            const results = new Query(userSchema, store).all();
+            
+            let text = '=== Demo 1: All Users ===\n\n';
+            text += 'Query: new Query(userSchema, store).all()\n\n';
+            text += 'Results:\n';
+            for (let record of results) {
+                text += '  ' + record.describe() + '\n';
+            }
+            text += '\nTotal: ' + results.length + ' records';
+            
+            output(text);
+            updateStats();
+        };
+        
+        // Demo 2: Filter Adults
+        window.runDemo2 = function() {
+            const results = new Query(userSchema, store)
+                .where("age", ">=", "18")
+                .all();
+            
+            let text = '=== Demo 2: Filter Adults ===\n\n';
+            text += 'Query: new Query(userSchema, store)\n';
+            text += '  .where("age", ">=", "18")\n';
+            text += '  .all()\n\n';
+            text += 'Results:\n';
+            for (let record of results) {
+                text += '  ' + record.describe() + '\n';
+            }
+            text += '\nTotal: ' + results.length + ' adults found';
+            
+            output(text);
+            updateStats();
+        };
+        
+        // Demo 3: Sort by Age
+        window.runDemo3 = function() {
+            const results = new Query(userSchema, store)
+                .orderBy("age", "desc")
+                .all();
+            
+            let text = '=== Demo 3: Sort by Age (Descending) ===\n\n';
+            text += 'Query: new Query(userSchema, store)\n';
+            text += '  .orderBy("age", "desc")\n';
+            text += '  .all()\n\n';
+            text += 'Results (ordered by age, oldest first):\n';
+            for (let record of results) {
+                text += '  ' + record.describe() + '\n';
+            }
+            
+            output(text);
+            updateStats();
+        };
+        
+        // Demo 4: Pagination
+        window.runDemo4 = function() {
+            const page1 = new Query(userSchema, store)
+                .orderBy("id", "asc")
+                .limit(2)
+                .all();
+                
+            const page2 = new Query(userSchema, store)
+                .orderBy("id", "asc")
+                .offset(2)
+                .limit(2)
+                .all();
+            
+            let text = '=== Demo 4: Pagination ===\n\n';
+            text += 'Page 1: .orderBy("id", "asc").limit(2)\n\n';
+            for (let record of page1) {
+                text += '  ' + record.describe() + '\n';
+            }
+            text += '\nPage 2: .orderBy("id", "asc").offset(2).limit(2)\n\n';
+            for (let record of page2) {
+                text += '  ' + record.describe() + '\n';
+            }
+            
+            output(text);
+            updateStats();
+        };
+        
+        // Demo 5: Complex Query
+        window.runDemo5 = function() {
+            const results = new Query(userSchema, store)
+                .where("age", ">=", "18")
+                .where("email", "!=", "")
+                .orderBy("age", "desc")
+                .select(["name", "age"])
+                .limit(2)
+                .all();
+            
+            let text = '=== Demo 5: Complex Query ===\n\n';
+            text += 'Query: new Query(userSchema, store)\n';
+            text += '  .where("age", ">=", "18")\n';
+            text += '  .where("email", "!=", "")\n';
+            text += '  .orderBy("age", "desc")\n';
+            text += '  .select(["name", "age"])\n';
+            text += '  .limit(2)\n';
+            text += '  .all()\n\n';
+            text += 'Results (adults with email, showing name/age only, oldest first, max 2):\n';
+            for (let record of results) {
+                text += '  ' + record.describe() + '\n';
+            }
+            
+            output(text);
+            updateStats();
+        };
+        
+        console.log('✅ Temper-compiled Skinny Ecto loaded successfully!');
+        console.log('Schema:', userSchema);
+        console.log('Store:', store);
+    </script>
+</body>
+</html>
