@@ -410,11 +410,8 @@ Builds a single WHERE condition. The value is untrusted user input —
     let whereConditionSql(clause: WhereClause, schema: Schema): SqlFragment {
       let col = safeSql(clause.field);
       let op = safeSql(validOperator(clause.operator));
-      let fieldType = do {
-        let f = schema.getField(clause.field) orelse null;
-        if (f != null) { f.fieldType } else { "String" }
-      };
-      if (fieldType == "Int") {
+      let fieldInfo = schema.getField(clause.field) orelse panic();
+      if (fieldInfo.fieldType == "Int") {
         let intVal = clause.value.toInt32() orelse 0;
         sql"${col} ${op} ${intVal}"
       } else {
@@ -440,7 +437,10 @@ Builds a single WHERE condition. The value is untrusted user input —
 ### Full SELECT query builder
 
 Assembles a complete SELECT statement from parts. This is the main pure
-function: it takes query state in, returns `SqlFragment` out.
+function: it takes query state in, returns `SqlFragment` out. Field names
+are validated against the schema — only declared fields pass through
+`safeSql`. Unknown fields are silently dropped, closing the confused deputy
+vector where user-controlled strings could reach `appendSafe`.
 
     export let toSqlQuery(
       schema: Schema,
@@ -450,19 +450,28 @@ function: it takes query state in, returns `SqlFragment` out.
       limitValue: Int,
       offsetValue: Int,
     ): SqlFragment {
+      let validSelect = selectFields.filter { (f: String): Boolean =>
+        schema.hasField(f)
+      };
+      let validWhere = whereClauses.filter { (c: WhereClause): Boolean =>
+        schema.hasField(c.field)
+      };
+      let validOrder = orderClauses.filter { (c: OrderClause): Boolean =>
+        schema.hasField(c.field)
+      };
       let table = safeSql(schema.tableName);
-      let cols = columnListSql(selectFields);
+      let cols = columnListSql(validSelect);
       var result = sql"SELECT ${cols} FROM ${table}";
-      if (whereClauses.length > 0) {
-        var conditions = whereConditionSql(whereClauses[0], schema);
-        for (var i = 1; i < whereClauses.length; i = i + 1) {
-          let next = whereConditionSql(whereClauses[i], schema);
+      if (validWhere.length > 0) {
+        var conditions = whereConditionSql(validWhere[0], schema);
+        for (var i = 1; i < validWhere.length; i = i + 1) {
+          let next = whereConditionSql(validWhere[i], schema);
           conditions = sql"${conditions} AND ${next}";
         }
         result = sql"${result} WHERE ${conditions}";
       }
-      if (orderClauses.length > 0) {
-        let ordering = orderBySql(orderClauses);
+      if (validOrder.length > 0) {
+        let ordering = orderBySql(validOrder);
         result = sql"${result} ORDER BY ${ordering}";
       }
       if (limitValue > 0) {
@@ -746,6 +755,42 @@ Unknown operators fall back to `=` for safety.
       );
       assert(result.toString() ==
         "SELECT name FROM users WHERE age > 21 ORDER BY name ASC LIMIT 5");
+    }
+
+### Adversarial field name protection
+
+Field names not in the schema are silently dropped from SQL generation.
+This prevents confused deputy attacks where user-controlled strings
+could reach `appendSafe` through field name positions.
+
+    test("toSql: adversarial field name blocked") {
+      let s = schema("users", [
+        field("name", "String", false, false),
+      ]);
+      let store = new InMemoryStore();
+      let q = new Query(s, store)
+        .where("1=1; DROP TABLE users; --", "=", "Alice");
+      assert(q.toSql().toString() == "SELECT * FROM users");
+    }
+
+    test("toSql: adversarial select column blocked") {
+      let s = schema("users", [
+        field("name", "String", false, false),
+      ]);
+      let store = new InMemoryStore();
+      let q = new Query(s, store)
+        .select(["name", "1; DROP TABLE users"]);
+      assert(q.toSql().toString() == "SELECT name FROM users");
+    }
+
+    test("toSql: adversarial order by blocked") {
+      let s = schema("users", [
+        field("name", "String", false, false),
+      ]);
+      let store = new InMemoryStore();
+      let q = new Query(s, store)
+        .orderBy("1; DROP TABLE users", "asc");
+      assert(q.toSql().toString() == "SELECT * FROM users");
     }
 
 ## Demo

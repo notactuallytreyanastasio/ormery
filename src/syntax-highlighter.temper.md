@@ -16,6 +16,30 @@ and list operations.
       public get isIdentifier(): Boolean { name == "identifier" }
     }
 
+## HTML Escaping
+
+Escapes HTML metacharacters to prevent XSS when rendering source code
+into HTML. Uses the same code-point iteration pattern as `SqlString`
+escaping in the SQL module.
+
+    let escapeHtml(text: String): String {
+      let builder = new StringBuilder();
+      for (let c of text) {
+        if (c == char'&') {
+          builder.append("&amp;");
+        } else if (c == char'<') {
+          builder.append("&lt;");
+        } else if (c == char'>') {
+          builder.append("&gt;");
+        } else if (c == char'"') {
+          builder.append("&quot;");
+        } else {
+          builder.appendCodePoint(c) orelse panic();
+        }
+      }
+      builder.toString()
+    }
+
 ## Token
 
     export class Token(
@@ -37,7 +61,8 @@ and list operations.
 
       public toHtml(): String {
         let cls = cssClass();
-        "<span class=\"${cls}\">${value}</span>"
+        let escaped = escapeHtml(value);
+        "<span class=\"${cls}\">${escaped}</span>"
       }
     }
 
