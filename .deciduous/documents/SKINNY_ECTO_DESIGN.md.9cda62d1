@@ -1,0 +1,257 @@
+# Skinny Ecto - Design Document
+
+**Project Goal**: Build a simplified, educational version of Elixir's Ecto library in Temper.
+
+**Target**: Core query syntax feel with minimal complexity.
+
+---
+
+## Philosophy
+
+Ecto is a powerful database toolkit for Elixir with ~100KB+ of sophisticated code handling:
+- Complex query planning and optimization
+- Multiple database adapters
+- Schema introspection and metadata
+- Changesets with validation
+- Associations and preloading
+- Migrations and transactions
+
+**Skinny Ecto strips this down to the essence**: Simple schemas + expressive queries + in-memory storage.
+
+---
+
+## Core Design Decisions
+
+### Decision 1: In-Memory Only
+
+**Rationale**:
+- Eliminates database driver complexity
+- Focuses learning on API design, not I/O
+- Instant setup, no dependencies
+
+**Trade-off**: No persistence across runs, but that's fine for a learning project.
+
+### Decision 2: Start with Select/Where
+
+**Rationale**:
+- These are the foundation of all queries
+- Understanding these unlocks the rest of the query DSL
+- Minimal but useful - can actually query data
+
+**Implementation approach**:
+```temper
+// Goal syntax (inspired by Ecto)
+from(User)
+  .where(u => u.age > 18)
+  .select(u => u.name)
+  .all()
+```
+
+### Decision 3: Schema as Data Structure
+
+**Rationale**:
+- Schemas define the "shape" of data
+- Use Temper's type system instead of macros
+- Keep it simple: name + list of fields
+
+**Example schema definition**:
+```temper
+schema User {
+  id: Int
+  name: String
+  age: Int
+  email: String
+}
+```
+
+---
+
+## Implementation Phases
+
+### Phase 1: Schema Definition (CURRENT)
+
+**What we need**:
+- Way to define a schema with fields and types
+- Auto-generate an ID field
+- Store schema metadata for validation
+
+**Thought process**:
+1. In Ecto, `schema "users" do` is a macro that generates struct fields
+2. In Temper, we can use a class or record type
+3. Need to track: table name, field names, field types
+
+**Design**:
+```temper
+class Schema {
+  name: String           // "users"
+  fields: List<Field>    // [{name: "id", type: "Int"}, ...]
+
+  // Constructor
+  new(name: String, fields: List<Field>) -> Schema
+}
+
+class Field {
+  name: String
+  type: String           // "Int", "String", etc.
+  primaryKey: Bool
+  nullable: Bool
+}
+```
+
+### Phase 2: In-Memory Storage
+
+**What we need**:
+- Store records in memory
+- Insert, retrieve, update, delete
+- Table-based organization
+
+**Thought process**:
+1. Ecto uses adapters to talk to databases
+2. We can fake this with a HashMap<String, List<Record>>
+3. Each table name maps to a list of records
+
+**Design**:
+```temper
+class InMemoryStore {
+  tables: Map<String, List<Map<String, Any>>>
+
+  insert(tableName: String, record: Map<String, Any>) -> Map<String, Any>
+  all(tableName: String) -> List<Map<String, Any>>
+  get(tableName: String, id: Int) -> Map<String, Any>?
+  update(tableName: String, id: Int, changes: Map<String, Any>) -> Map<String, Any>
+  delete(tableName: String, id: Int) -> Bool
+}
+```
+
+### Phase 3: Query Builder (Select/Where)
+
+**What we need**:
+- Fluent API: `from(User).where(...).select(...)`
+- Represent queries as data structures
+- Execute queries against in-memory store
+
+**Thought process**:
+1. Ecto's `from` creates a `%Query{}` struct
+2. Each clause (where, select, order_by) modifies the query
+3. `.all()` executes the query
+
+**Design**:
+```temper
+class Query {
+  schema: Schema
+  whereClauses: List<WhereClause>
+  selectFields: List<String>
+  orderBy: List<OrderClause>
+  limitValue: Int?
+
+  // Builder methods
+  where(predicate: Function) -> Query
+  select(selector: Function) -> Query
+  orderBy(field: String, direction: String) -> Query
+  limit(n: Int) -> Query
+
+  // Execute
+  all(store: InMemoryStore) -> List<Map<String, Any>>
+}
+```
+
+**Where clause challenge**:
+- Ecto uses macros to parse `u.age > 18` at compile time
+- Temper doesn't have macros (yet?)
+- Options:
+  1. Lambda functions: `.where(u => u.age > 18)` - need runtime eval
+  2. Builder pattern: `.where("age", ">", 18)` - simple but verbose
+  3. String predicates: `.where("age > 18")` - requires parsing
+
+**Decision**: Start with builder pattern for simplicity, can enhance later.
+
+---
+
+## Feature Comparison
+
+| Feature | Full Ecto | Skinny Ecto | Rationale |
+|---------|-----------|-------------|-----------|
+| Schema definition | ✅ Macro | ✅ Class | Simpler in Temper |
+| Field types | ✅ 20+ types | ✅ 4 basic types | Start minimal |
+| Associations | ✅ has_many, belongs_to, etc. | ❌ Skip | Complex, not core to queries |
+| Changesets | ✅ Validation & casting | ❌ Skip | Separate concern |
+| Migrations | ✅ Schema evolution | ❌ Skip | No persistence |
+| Query: select | ✅ | ✅ | Phase 1 |
+| Query: where | ✅ | ✅ | Phase 1 |
+| Query: order_by | ✅ | ⏳ Phase 2 | Easy add-on |
+| Query: limit/offset | ✅ | ⏳ Phase 2 | Easy add-on |
+| Query: join | ✅ | ❌ Skip | Complex without associations |
+| Query: aggregates | ✅ count, sum, etc. | ⏳ Phase 3 | Useful but not essential |
+| Repo: all() | ✅ | ✅ | Core operation |
+| Repo: get() | ✅ | ✅ | Core operation |
+| Repo: insert() | ✅ | ✅ | Core operation |
+| Repo: update() | ✅ | ⏳ Phase 2 | Useful |
+| Repo: delete() | ✅ | ⏳ Phase 2 | Useful |
+| Transactions | ✅ | ❌ Skip | In-memory = atomic anyway |
+
+---
+
+## Example Usage (Target API)
+
+```temper
+// Define schema
+val userSchema = Schema.new("users", [
+  Field.new("id", "Int", primaryKey: true),
+  Field.new("name", "String"),
+  Field.new("age", "Int"),
+  Field.new("email", "String")
+])
+
+// Create store
+val store = InMemoryStore.new()
+
+// Insert data
+store.insert("users", {"name": "Alice", "age": 25, "email": "alice@example.com"})
+store.insert("users", {"name": "Bob", "age": 30, "email": "bob@example.com"})
+store.insert("users", {"name": "Charlie", "age": 17, "email": "charlie@example.com"})
+
+// Build and execute query
+val adults = Query.new(userSchema)
+  .where("age", ">=", 18)
+  .select(["name", "email"])
+  .orderBy("age", "desc")
+  .all(store)
+
+// Result: [{"name": "Bob", "email": "bob@example.com"}, {"name": "Alice", "email": "alice@example.com"}]
+```
+
+---
+
+## Learning Objectives
+
+By building Skinny Ecto, we learn:
+
+1. **Query Builder Pattern**: Fluent APIs for composing operations
+2. **Data Modeling**: Schemas, types, and validation
+3. **Separation of Concerns**: Query building vs. query execution
+4. **In-Memory Data Structures**: Efficient storage and retrieval
+5. **Temper Language Features**: Classes, generics, lambdas, collections
+
+---
+
+## Next Steps
+
+- [ ] Implement `Schema` and `Field` classes
+- [ ] Implement `InMemoryStore` with insert/all/get
+- [ ] Implement `Query` builder with where/select
+- [ ] Write example program demonstrating usage
+- [ ] Add tests
+- [ ] Iterate based on what we learn
+
+---
+
+## Decision Log
+
+All major decisions are tracked in the deciduous graph:
+- Goal Node 12: Build skinny Ecto in Temper
+- See `.deciduous/` directory and run `deciduous serve` to view the graph
+
+---
+
+**Last Updated**: 2026-02-21
+**Status**: Phase 1 - Schema Definition (In Progress)
