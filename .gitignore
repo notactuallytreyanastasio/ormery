@@ -7,6 +7,12 @@ temper.out/
 node_modules/
 package-lock.json
 
+# Tutorial lib (regenerated from temper.out by Vite)
+tutorial/lib/
+
+# Vite cache
+.vite/
+
 # Python
 __pycache__/
 *.py[cod]
@@ -37,8 +43,8 @@ build/
 *.dylib
 
 # Decision graph (keep config, exclude database)
-.deciduous/deciduous.db
-.deciduous/.graph-cache/
+# .deciduous/deciduous.db
+# .deciduous/.graph-cache/
 
 # Claude CLI
 .claude/settings.local.json

@@ -6,7 +6,7 @@
 .PHONY: help build build-js build-py bundle test run serve open \
         clean clean-build clean-bundle \
         graph graph-serve graph-sync graph-check \
-        check deps all
+        check deps setup all
 
 # Default port for tutorial server
 PORT ?= 8000
@@ -40,12 +40,10 @@ build-py: ## Compile Temper source to Python
 	$(TEMPER) build --backend py
 	@echo "Build complete: temper.out/py/"
 
-bundle: build-js ## Bundle compiled JS into tutorial/lib for browser use
-	@echo "Bundling compiled JS for browser..."
-	@mkdir -p tutorial/lib
-	cp -r temper.out/js/temper-core tutorial/lib/
-	cp -r temper.out/js/ormery tutorial/lib/
-	@echo "Bundle ready in tutorial/lib/"
+bundle: build-js ## Build production tutorial bundle with Vite
+	@echo "Bundling tutorial with Vite..."
+	npx vite build
+	@echo "Production bundle ready in dist/"
 
 ##@ Run
 run: build-js ## Run the demo via Node.js
@@ -57,14 +55,12 @@ run-py: build-py ## Run the demo via Python
 test: run-py ## Run tests (Python backend)
 
 ##@ Tutorial & Demo
-serve: ## Start tutorial server on localhost (PORT=8000)
-	@echo "Starting tutorial server on http://localhost:$(PORT)"
+serve: build-js ## Start Vite dev server for tutorial (PORT=8000)
+	@echo "Starting Vite dev server..."
 	@echo "  Static Tutorial:       http://localhost:$(PORT)/"
 	@echo "  Interactive Playground: http://localhost:$(PORT)/interactive.html"
 	@echo "  Temper Demo:           http://localhost:$(PORT)/demo.html"
-	@echo ""
-	@echo "Press Ctrl+C to stop"
-	@cd tutorial && python3 -m http.server $(PORT)
+	npx vite --port $(PORT)
 
 open: ## Open the interactive playground in your browser
 	@open http://localhost:$(PORT)/interactive.html 2>/dev/null || \
@@ -110,17 +106,20 @@ clean-build: ## Remove Temper compilation output
 	rm -rf temper.out/
 	@echo "Removed temper.out/"
 
-clean-bundle: ## Remove bundled JS from tutorial/lib
-	rm -rf tutorial/lib/temper-core tutorial/lib/ormery
-	rm -rf tutorial/bundle
-	@echo "Removed tutorial/lib/ bundles"
+clean-bundle: ## Remove Vite build output
+	rm -rf dist/
+	@echo "Removed dist/"
 
 ##@ Checks
+setup: ## Install npm dependencies (Vite)
+	npm install
+
 deps: ## Check that required tools are installed
 	@echo "Checking dependencies..."
 	@command -v $(TEMPER) >/dev/null 2>&1 && echo "  $(TEMPER): OK" || echo "  $(TEMPER): MISSING - install from https://github.com/temperlang/temper"
 	@command -v node >/dev/null 2>&1 && echo "  node: OK ($(shell node --version 2>/dev/null))" || echo "  node: MISSING"
-	@command -v python3 >/dev/null 2>&1 && echo "  python3: OK ($(shell python3 --version 2>/dev/null))" || echo "  python3: MISSING"
+	@command -v npx >/dev/null 2>&1 && echo "  npx: OK" || echo "  npx: MISSING"
+	@test -d node_modules && echo "  node_modules: OK" || echo "  node_modules: MISSING - run 'make setup'"
 	@command -v deciduous >/dev/null 2>&1 && echo "  deciduous: OK" || echo "  deciduous: MISSING (optional - for decision graph)"
 	@command -v gh >/dev/null 2>&1 && echo "  gh: OK" || echo "  gh: MISSING (optional - for GitHub CLI)"
 
@@ -136,14 +135,14 @@ check: deps ## Verify project health (deps + git status)
 	@ls -1 tutorial/*.html
 
 ##@ All-in-One
-all: build bundle ## Build everything and prepare tutorial bundle
+all: build bundle ## Build everything and bundle for production
 	@echo ""
-	@echo "Ready! Run 'make serve' to start the tutorial server."
+	@echo "Ready! Run 'make serve' to start the Vite dev server."
 
-startup: deps build bundle ## Full startup: check deps, build, bundle
+startup: setup deps build ## Full startup: install deps, check tools, build
 	@echo ""
 	@echo "Startup complete. Available commands:"
-	@echo "  make serve   - Start tutorial server"
+	@echo "  make serve   - Start Vite dev server"
 	@echo "  make open    - Open interactive playground"
 	@echo "  make run     - Run CLI demo"
 	@echo "  make graph   - View decision graph"
