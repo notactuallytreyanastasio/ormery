@@ -92,7 +92,14 @@ the `${id}` interpolation becomes a `SqlSource` instance.
 
       public formatTo(builder: StringBuilder): Void {
         builder.append("'");
-        builder.append(value.toString());
+        let s = value.toString();
+        for (let c of s) {
+          if (c == char'\'') {
+            builder.append("''");
+          } else {
+            builder.appendCodePoint(c) orelse panic();
+          }
+        }
         builder.append("'");
       }
 

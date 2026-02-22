@@ -73,7 +73,32 @@ injection-proof SQL generation.
       new Field(name, fieldType, primaryKey, nullable)
     }
 
+### Identifier validation
+
+Only allow safe SQL identifier characters: `a-z`, `A-Z`, `0-9`, `_`.
+This closes the table name backdoor where `schema()` accepted arbitrary
+strings that passed through `safeSql()` → `appendSafe()` unescaped.
+
+    export let isValidIdentifier(name: String): Boolean {
+      if (name.isEmpty) { return false; }
+      for (let c of name) {
+        if (c != char'_') {
+          if (c >= char'a') {
+            if (c > char'z') { return false; }
+          } else if (c >= char'A') {
+            if (c > char'Z') { return false; }
+          } else if (c >= char'0') {
+            if (c > char'9') { return false; }
+          } else {
+            return false;
+          }
+        }
+      }
+      true
+    }
+
     export let schema(tableName: String, fields: List<Field>): Schema {
+      if (!isValidIdentifier(tableName)) { panic(); }
       let idField = new Field("id", "Int", true, false);
       let allFields = new ListBuilder<Field>();
       allFields.add(idField);
@@ -224,7 +249,7 @@ injection-proof SQL generation.
       }
 
       public limit(n: Int): Query {
-        limitValue = n;
+        limitValue = if (n < 0) { 0 } else { n };
         this
       }
 
@@ -303,7 +328,7 @@ injection-proof SQL generation.
         } else {
           filtered
         };
-        let sliced = if (limitValue > 0) {
+        let sliced = if (limitValue >= 0) {
           let start = offsetValue;
           let end = offsetValue + limitValue;
           sorted.slice(start, end)
@@ -324,6 +349,7 @@ injection-proof SQL generation.
     let compareInt(recordValue: String, operator: String, clauseValue: String): Boolean {
       let rv = recordValue.toInt32() orelse 0;
       let cv = clauseValue.toInt32() orelse 0;
+      if (clauseValue != cv.toString()) { return false; }
       when (operator) {
         "==" -> rv == cv;
         "!=" -> rv != cv;
@@ -413,7 +439,11 @@ Builds a single WHERE condition. The value is untrusted user input —
       let fieldInfo = schema.getField(clause.field) orelse panic();
       if (fieldInfo.fieldType == "Int") {
         let intVal = clause.value.toInt32() orelse 0;
-        sql"${col} ${op} ${intVal}"
+        if (clause.value != intVal.toString()) {
+          sql"1 = 0"
+        } else {
+          sql"${col} ${op} ${intVal}"
+        }
       } else {
         let strVal = clause.value;
         sql"${col} ${op} ${strVal}"
@@ -474,7 +504,7 @@ vector where user-controlled strings could reach `appendSafe`.
         let ordering = orderBySql(validOrder);
         result = sql"${result} ORDER BY ${ordering}";
       }
-      if (limitValue > 0) {
+      if (limitValue >= 0) {
         result = sql"${result} LIMIT ${limitValue}";
       }
       if (offsetValue > 0) {
@@ -497,6 +527,9 @@ Field names come from the schema (trusted). Values are escaped via
       let fieldList = schema.fields.filter { (f: Field): Boolean =>
         values.has(f.name)
       };
+      if (fieldList.length == 0) {
+        return sql"";
+      }
       let colNames = columnListSql(
         fieldList.map { (f: Field): String => f.name }
       );
@@ -791,6 +824,100 @@ could reach `appendSafe` through field name positions.
       let q = new Query(s, store)
         .orderBy("1; DROP TABLE users", "asc");
       assert(q.toSql().toString() == "SELECT * FROM users");
+    }
+
+## Security Audit Fix Tests
+
+### Fix #1: Table name validation
+
+    test("isValidIdentifier: valid names") {
+      assert(isValidIdentifier("users"));
+      assert(isValidIdentifier("user_table"));
+      assert(isValidIdentifier("Table1"));
+      assert(isValidIdentifier("_private"));
+      assert(isValidIdentifier("a"));
+    }
+
+    test("isValidIdentifier: invalid names") {
+      assert(!isValidIdentifier(""));
+      assert(!isValidIdentifier("users; DROP TABLE"));
+      assert(!isValidIdentifier("users--"));
+      assert(!isValidIdentifier("ta ble"));
+      assert(!isValidIdentifier("table.name"));
+      assert(!isValidIdentifier("Robert'); DROP TABLE users;--"));
+    }
+
+### Fix #3: Non-numeric value for Int field
+
+    test("toSql: non-numeric Int value produces always-false") {
+      let s = schema("users", [
+        field("age", "Int", false, false),
+      ]);
+      let store = new InMemoryStore();
+      let q = new Query(s, store).where("age", "=", "admin");
+      assert(q.toSql().toString() == "SELECT * FROM users WHERE 1 = 0");
+    }
+
+    test("in-memory: non-numeric Int value matches nothing") {
+      let s = schema("users", [
+        field("name", "String", false, false),
+        field("age", "Int", false, false),
+      ]);
+      let store = new InMemoryStore();
+      store.insert("users", new Map<String, String>([
+        new Pair("name", "Alice"),
+        new Pair("age", "0"),
+      ]));
+      let results = new Query(s, store).where("age", "=", "admin").all();
+      assert(results.length == 0);
+    }
+
+### Fix #5: LIMIT zero and negative
+
+    test("toSql: limit zero emits LIMIT 0") {
+      let s = schema("users", [
+        field("name", "String", false, false),
+      ]);
+      let store = new InMemoryStore();
+      let q = new Query(s, store).limit(0);
+      assert(q.toSql().toString() == "SELECT * FROM users LIMIT 0");
+    }
+
+    test("in-memory: limit zero returns empty") {
+      let s = schema("users", [
+        field("name", "String", false, false),
+      ]);
+      let store = new InMemoryStore();
+      store.insert("users", new Map<String, String>([
+        new Pair("name", "Alice"),
+      ]));
+      let results = new Query(s, store).limit(0).all();
+      assert(results.length == 0);
+    }
+
+    test("in-memory: negative limit clamped to zero") {
+      let s = schema("users", [
+        field("name", "String", false, false),
+      ]);
+      let store = new InMemoryStore();
+      store.insert("users", new Map<String, String>([
+        new Pair("name", "Alice"),
+      ]));
+      let results = new Query(s, store).limit(-5).all();
+      assert(results.length == 0);
+    }
+
+### Fix #6: Empty insert safety
+
+    test("toInsertSql: no matching fields returns empty") {
+      let s = schema("users", [
+        field("name", "String", false, false),
+      ]);
+      let vals = new Map<String, String>([
+        new Pair("nonexistent", "value"),
+      ]);
+      let result = toInsertSql(s, vals);
+      assert(result.toString() == "");
     }
 
 ## Demo
