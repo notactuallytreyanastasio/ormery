@@ -6,6 +6,10 @@ The `name` export defines the library name:
 
     export let name = "ormery";
 
+Dependencies on other Temper modules:
+
+    export let dependencies = ["../secure-composition"];
+
 By default, the current directory is imported as a module. It can import
 other module directories. See Temper documentation for additional config
 options.

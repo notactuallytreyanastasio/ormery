@@ -1,0 +1,10 @@
+# Temper stuff
+temper.out
+# Ignore keep temporarily
+temper.keep
+
+# Emacs droppings
+*~
+
+# Python droppings
+__pycache__

@@ -5,7 +5,7 @@ secure-composition's `html"..."` tagged strings for contextual
 auto-escaping — values interpolated into element content are
 HTML-entity-encoded automatically.
 
-    let { html, SafeHtml } = import("../secure-composition/src/html");
+    let { html, SafeHtml } = import("./secure-composition/html");
 
 ## Token Types
 

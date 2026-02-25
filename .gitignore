@@ -59,4 +59,3 @@ temper.keep/
 
 # Claude CLI
 .claude/settings.local.json
-secure-composition/
