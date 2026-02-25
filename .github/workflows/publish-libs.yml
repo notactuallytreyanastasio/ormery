@@ -6,9 +6,41 @@ on:
   workflow_dispatch:
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout ormery
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Clone and build Temper compiler
+        run: |
+          git clone https://github.com/temperlang/temper.git /tmp/temper
+          cd /tmp/temper
+          ./gradlew cli:build --no-daemon
+
+      - name: Run temper build
+        run: |
+          export PATH="/tmp/temper/cli/build/install/temper/bin:$PATH"
+          temper build
+
+      - name: Upload temper.out artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: temper-out
+          path: temper.out/
+          retention-days: 1
+
   publish:
+    needs: build
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         include:
           - lang: js
@@ -37,8 +69,11 @@ jobs:
             full_tree: false
 
     steps:
-      - name: Checkout ormery
-        uses: actions/checkout@v4
+      - name: Download temper.out artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: temper-out
+          path: temper.out/
 
       - name: Set up SSH
         run: |

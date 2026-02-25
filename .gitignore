@@ -1,5 +1,5 @@
-# Temper build logs
-temper.out/-logs/
+# Temper build outputs
+temper.out/
 *.class
 *.jar
 
