@@ -1,0 +1,85 @@
+name: Publish compiled libs
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - lang: js
+            lang_upper: JS
+            repo: ormery-js
+            full_tree: false
+          - lang: py
+            lang_upper: PY
+            repo: ormery-py
+            full_tree: false
+          - lang: csharp
+            lang_upper: CSHARP
+            repo: ormery-csharp
+            full_tree: true
+          - lang: rust
+            lang_upper: RUST
+            repo: ormery-rust
+            full_tree: true
+          - lang: java
+            lang_upper: JAVA
+            repo: ormery-java
+            full_tree: false
+          - lang: lua
+            lang_upper: LUA
+            repo: ormery-lua
+            full_tree: false
+
+    steps:
+      - name: Checkout ormery
+        uses: actions/checkout@v4
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets[format('DEPLOY_KEY_{0}', matrix.lang_upper)] }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          git config --global core.sshCommand "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no"
+
+      - name: Clone target lib repo
+        run: |
+          git clone git@github.com:notactuallytreyanastasio/${{ matrix.repo }}.git target-repo
+          cd target-repo
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+
+      - name: Sync compiled output
+        run: |
+          cd target-repo
+
+          # Remove old files (except .git and workflows)
+          find . -maxdepth 1 -not -name '.git' -not -name '.' -not -name '.github' | xargs rm -rf
+
+          if [ "${{ matrix.full_tree }}" = "true" ]; then
+            # Copy full tree (ormery/ + std/ + temper-core/)
+            cp -r ../temper.out/${{ matrix.lang }}/* .
+          else
+            # Copy only ormery/ subdir contents
+            cp -r ../temper.out/${{ matrix.lang }}/ormery/* .
+          fi
+
+          # Write version info
+          echo "${{ github.sha }}" > VERSION
+
+      - name: Commit and push
+        run: |
+          cd target-repo
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update from ormery ${{ github.sha }}"
+            git push
+          fi
