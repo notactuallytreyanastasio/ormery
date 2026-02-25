@@ -36,6 +36,13 @@ jobs:
           path: temper.out/
           retention-days: 1
 
+      - name: Upload notify-app template
+        uses: actions/upload-artifact@v4
+        with:
+          name: notify-app-template
+          path: .github/notify-app-template.yml
+          retention-days: 1
+
   publish:
     needs: build
     runs-on: ubuntu-latest
@@ -46,26 +53,38 @@ jobs:
           - lang: js
             lang_upper: JS
             repo: ormery-js
+            app_repo: ormery-js-app
+            vendor_path: vendor
             full_tree: true
           - lang: py
             lang_upper: PY
             repo: ormery-py
+            app_repo: ormery-py-app
+            vendor_path: vendor
             full_tree: true
           - lang: csharp
             lang_upper: CSHARP
             repo: ormery-csharp
+            app_repo: ormery-csharp-app
+            vendor_path: TodoApp/vendor
             full_tree: true
           - lang: rust
             lang_upper: RUST
             repo: ormery-rust
+            app_repo: ormery-rust-app
+            vendor_path: vendor
             full_tree: true
           - lang: java
             lang_upper: JAVA
             repo: ormery-java
+            app_repo: ormery-java-app
+            vendor_path: vendor
             full_tree: true
           - lang: lua
             lang_upper: LUA
             repo: ormery-lua
+            app_repo: ormery-lua-app
+            vendor_path: vendor
             full_tree: true
 
     steps:
@@ -74,6 +93,12 @@ jobs:
         with:
           name: temper-out
           path: temper.out/
+
+      - name: Download notify-app template
+        uses: actions/download-artifact@v4
+        with:
+          name: notify-app-template
+          path: templates/
 
       - name: Set up SSH
         run: |
@@ -107,6 +132,13 @@ jobs:
 
           # Write version info
           echo "${{ github.sha }}" > VERSION
+
+      - name: Write notify-app workflow
+        run: |
+          mkdir -p target-repo/.github/workflows
+          cp templates/notify-app-template.yml target-repo/.github/workflows/notify-app.yml
+          sed -i "s|__APP_REPO__|${{ matrix.app_repo }}|g" target-repo/.github/workflows/notify-app.yml
+          sed -i "s|__VENDOR_PATH__|${{ matrix.vendor_path }}|g" target-repo/.github/workflows/notify-app.yml
 
       - name: Commit and push
         run: |
