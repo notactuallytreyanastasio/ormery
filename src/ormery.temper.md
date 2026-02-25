@@ -3,7 +3,7 @@
 A simplified version of Ecto in Temper, using secure-composition for
 injection-proof SQL generation.
 
-    let { sql, SqlFragment, SqlBuilder } = import("./sql");
+    let { sql, SqlFragment, SqlBuilder } = import("../secure-composition/src/sql");
 
 ## Field and Schema
 
