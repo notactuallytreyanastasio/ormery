@@ -22,7 +22,7 @@ jobs:
         run: |
           git clone https://github.com/temperlang/temper.git /tmp/temper
           cd /tmp/temper
-          ./gradlew cli:build --no-daemon
+          ./gradlew cli:installDist --no-daemon
 
       - name: Run temper build
         run: |
