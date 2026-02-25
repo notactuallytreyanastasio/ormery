@@ -1,5 +1,5 @@
-# Temper build outputs
-temper.out/
+# Temper build logs
+temper.out/-logs/
 *.class
 *.jar
 
@@ -38,9 +38,20 @@ Thumbs.db
 # Build artifacts
 dist/
 build/
+target/
+bin/
+obj/
 *.o
 *.so
 *.dylib
+
+# App databases and runtime files
+apps/**/*.db
+apps/**/*.db-shm
+apps/**/*.db-wal
+
+# temper.keep (local backups)
+temper.keep/
 
 # Decision graph (keep config, exclude database)
 # .deciduous/deciduous.db
