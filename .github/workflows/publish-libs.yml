@@ -46,11 +46,11 @@ jobs:
           - lang: js
             lang_upper: JS
             repo: ormery-js
-            full_tree: false
+            full_tree: true
           - lang: py
             lang_upper: PY
             repo: ormery-py
-            full_tree: false
+            full_tree: true
           - lang: csharp
             lang_upper: CSHARP
             repo: ormery-csharp
@@ -62,11 +62,11 @@ jobs:
           - lang: java
             lang_upper: JAVA
             repo: ormery-java
-            full_tree: false
+            full_tree: true
           - lang: lua
             lang_upper: LUA
             repo: ormery-lua
-            full_tree: false
+            full_tree: true
 
     steps:
       - name: Download temper.out artifact

@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.EntityFrameworkCore;
 using TodoApp.Data;
 using TodoApp.Models;
 
@@ -8,9 +7,9 @@ namespace TodoApp.Pages;
 
 public class IndexModel : PageModel
 {
-    private readonly AppDbContext _db;
+    private readonly TodoDb _db;
 
-    public IndexModel(AppDbContext db)
+    public IndexModel(TodoDb db)
     {
         _db = db;
     }
@@ -18,47 +17,33 @@ public class IndexModel : PageModel
     public List<TodoList> Lists { get; set; } = new();
     public int? EditingListId { get; set; }
 
-    public async Task OnGetAsync(int? editId)
+    public void OnGet(int? editId)
     {
-        Lists = await _db.Lists
-            .Include(l => l.Todos)
-            .OrderBy(l => l.CreatedAt)
-            .ToListAsync();
+        Lists = _db.GetAllLists();
         EditingListId = editId;
     }
 
-    public async Task<IActionResult> OnPostCreateAsync(string name)
+    public IActionResult OnPostCreate(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
             return RedirectToPage();
 
-        _db.Lists.Add(new TodoList { Name = name.Trim(), CreatedAt = DateTime.UtcNow });
-        await _db.SaveChangesAsync();
+        _db.InsertList(name.Trim());
         return RedirectToPage();
     }
 
-    public async Task<IActionResult> OnPostUpdateAsync(int id, string name)
+    public IActionResult OnPostUpdate(int id, string name)
     {
-        var list = await _db.Lists.FindAsync(id);
-        if (list == null)
-            return RedirectToPage();
-
         if (!string.IsNullOrWhiteSpace(name))
         {
-            list.Name = name.Trim();
-            await _db.SaveChangesAsync();
+            _db.UpdateList(id, name.Trim());
         }
         return RedirectToPage();
     }
 
-    public async Task<IActionResult> OnPostDeleteAsync(int id)
+    public IActionResult OnPostDelete(int id)
     {
-        var list = await _db.Lists.FindAsync(id);
-        if (list != null)
-        {
-            _db.Lists.Remove(list);
-            await _db.SaveChangesAsync();
-        }
+        _db.DeleteList(id);
         return RedirectToPage();
     }
 }

@@ -7,7 +7,14 @@ local socket = require("socket")
 
 -- Resolve the script directory for reliable requires
 local script_dir = debug.getinfo(1, "S").source:match("^@(.*/)") or "./"
-package.path = script_dir .. "?.lua;" .. package.path
+package.path = script_dir .. "vendor/ormery/?.lua;"
+    .. script_dir .. "vendor/ormery/?/init.lua;"
+    .. script_dir .. "vendor/temper-core/?.lua;"
+    .. script_dir .. "vendor/temper-core/?/init.lua;"
+    .. script_dir .. "vendor/std/?.lua;"
+    .. script_dir .. "vendor/std/?/init.lua;"
+    .. script_dir .. "?.lua;"
+    .. package.path
 
 local db = require("db")
 local templates = require("templates")

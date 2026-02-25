@@ -2,9 +2,13 @@
   "name": "ormery-js-todo",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "dependencies": {
     "express": "^4.21.0",
     "better-sqlite3": "^11.0.0",
-    "ejs": "^3.1.10"
+    "ejs": "^3.1.10",
+    "ormery": "file:./vendor/ormery",
+    "@temperlang/core": "file:./vendor/temper-core",
+    "@temperlang/std": "file:./vendor/std"
   }
 }

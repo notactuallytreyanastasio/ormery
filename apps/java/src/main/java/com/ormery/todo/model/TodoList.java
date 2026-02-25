@@ -1,27 +1,19 @@
 package com.ormery.todo.model;
 
-import jakarta.persistence.*;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
-@Entity
-@Table(name = "lists")
+/**
+ * Plain POJO for a todo list. No JPA annotations -- mapped via JDBC + ORMery.
+ */
 public class TodoList {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(nullable = false)
     private String name;
-
-    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    @OneToMany(mappedBy = "list", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @OrderBy("createdAt ASC")
-    private List<TodoItem> todos = new ArrayList<>();
+    // Derived counts populated by the repository layer
+    private long completedCount;
+    private long totalCount;
 
     public TodoList() {
     }
@@ -29,13 +21,6 @@ public class TodoList {
     public TodoList(String name) {
         this.name = name;
         this.createdAt = LocalDateTime.now();
-    }
-
-    @PrePersist
-    protected void onCreate() {
-        if (createdAt == null) {
-            createdAt = LocalDateTime.now();
-        }
     }
 
     public Long getId() {
@@ -62,19 +47,19 @@ public class TodoList {
         this.createdAt = createdAt;
     }
 
-    public List<TodoItem> getTodos() {
-        return todos;
-    }
-
-    public void setTodos(List<TodoItem> todos) {
-        this.todos = todos;
-    }
-
     public long getCompletedCount() {
-        return todos.stream().filter(TodoItem::getCompleted).count();
+        return completedCount;
+    }
+
+    public void setCompletedCount(long completedCount) {
+        this.completedCount = completedCount;
     }
 
     public long getTotalCount() {
-        return todos.size();
+        return totalCount;
+    }
+
+    public void setTotalCount(long totalCount) {
+        this.totalCount = totalCount;
     }
 }

@@ -1,9 +1,32 @@
-const express = require('express');
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
+import { schema, field, Query, InMemoryStore, toInsertSql } from 'ormery';
+
+const require = createRequire(import.meta.url);
 const Database = require('better-sqlite3');
-const path = require('path');
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = 5006;
+
+// --- ORMery Schemas ---
+const store = new InMemoryStore(); // dummy store for SQL generation
+
+const listSchema = schema("lists", [
+  field("name", "String", false, false),
+  field("created_at", "String", false, true),
+]);
+
+const todoSchema = schema("todos", [
+  field("title", "String", false, false),
+  field("completed", "Int", false, false),
+  field("list_id", "Int", false, false),
+  field("created_at", "String", false, true),
+]);
 
 // --- Middleware ---
 app.set('view engine', 'ejs');
@@ -57,21 +80,17 @@ if (listCount === 0) {
   seedDb();
 }
 
-// --- Prepared Statements ---
+// --- Prepared Statements (raw SQL for UPDATE/DELETE/aggregate) ---
 const stmts = {
+  // Aggregate/JOIN query - kept as raw SQL (ORMery doesn't support JOINs/subqueries)
   allLists: db.prepare(`
     SELECT l.*,
       (SELECT COUNT(*) FROM todos WHERE list_id = l.id) AS todo_count,
       (SELECT COUNT(*) FROM todos WHERE list_id = l.id AND completed = 1) AS done_count
     FROM lists l ORDER BY l.created_at DESC
   `),
-  getList: db.prepare('SELECT * FROM lists WHERE id = ?'),
-  createList: db.prepare('INSERT INTO lists (name) VALUES (?)'),
   deleteList: db.prepare('DELETE FROM lists WHERE id = ?'),
   deleteTodosByList: db.prepare('DELETE FROM todos WHERE list_id = ?'),
-  todosByList: db.prepare('SELECT * FROM todos WHERE list_id = ? ORDER BY completed ASC, created_at DESC'),
-  createTodo: db.prepare('INSERT INTO todos (title, list_id) VALUES (?, ?)'),
-  getTodo: db.prepare('SELECT * FROM todos WHERE id = ?'),
   toggleTodo: db.prepare('UPDATE todos SET completed = CASE WHEN completed = 1 THEN 0 ELSE 1 END WHERE id = ?'),
   deleteTodo: db.prepare('DELETE FROM todos WHERE id = ?'),
   editTodo: db.prepare('UPDATE todos SET title = ? WHERE id = ?'),
@@ -90,7 +109,9 @@ app.get('/', (req, res) => {
 app.post('/lists', (req, res) => {
   const name = (req.body.name || '').trim();
   if (name) {
-    stmts.createList.run(name);
+    const vals = new Map([["name", name]]);
+    const sql = toInsertSql(listSchema, vals).toString();
+    db.prepare(sql).run();
   }
   res.redirect('/');
 });
@@ -109,11 +130,19 @@ app.post('/lists/:id/delete', (req, res) => {
 // GET /lists/:id - Show a single list with its todos
 app.get('/lists/:id', (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const list = stmts.getList.get(id);
+  // Get a single list by ID using ORMery
+  const listSql = new Query(listSchema, store).where("id", "=", String(id)).toSql().toString();
+  const list = db.prepare(listSql).get();
   if (!list) {
     return res.redirect('/');
   }
-  const todos = stmts.todosByList.all(id);
+  // Get todos for this list using ORMery
+  const todosSql = new Query(todoSchema, store)
+    .where("list_id", "=", String(id))
+    .orderBy("completed", "asc")
+    .orderBy("created_at", "desc")
+    .toSql().toString();
+  const todos = db.prepare(todosSql).all();
   const counts = stmts.countTodosByList.get(id);
   res.render('list', { list, todos, counts });
 });
@@ -123,7 +152,9 @@ app.post('/lists/:id/todos', (req, res) => {
   const id = parseInt(req.params.id, 10);
   const title = (req.body.title || '').trim();
   if (title) {
-    stmts.createTodo.run(title, id);
+    const vals = new Map([["title", title], ["list_id", String(id)]]);
+    const sql = toInsertSql(todoSchema, vals).toString();
+    db.prepare(sql).run();
   }
   res.redirect(`/lists/${id}`);
 });
@@ -131,7 +162,9 @@ app.post('/lists/:id/todos', (req, res) => {
 // POST /todos/:id/toggle - Toggle a todo's completed status
 app.post('/todos/:id/toggle', (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const todo = stmts.getTodo.get(id);
+  // Get a single todo by ID using ORMery
+  const todoSql = new Query(todoSchema, store).where("id", "=", String(id)).toSql().toString();
+  const todo = db.prepare(todoSql).get();
   if (todo) {
     stmts.toggleTodo.run(id);
     res.redirect(`/lists/${todo.list_id}`);
@@ -143,7 +176,9 @@ app.post('/todos/:id/toggle', (req, res) => {
 // POST /todos/:id/delete - Delete a todo
 app.post('/todos/:id/delete', (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const todo = stmts.getTodo.get(id);
+  // Get a single todo by ID using ORMery
+  const todoSql = new Query(todoSchema, store).where("id", "=", String(id)).toSql().toString();
+  const todo = db.prepare(todoSql).get();
   if (todo) {
     stmts.deleteTodo.run(id);
     res.redirect(`/lists/${todo.list_id}`);
@@ -156,7 +191,9 @@ app.post('/todos/:id/delete', (req, res) => {
 app.post('/todos/:id/edit', (req, res) => {
   const id = parseInt(req.params.id, 10);
   const title = (req.body.title || '').trim();
-  const todo = stmts.getTodo.get(id);
+  // Get a single todo by ID using ORMery
+  const todoSql = new Query(todoSchema, store).where("id", "=", String(id)).toSql().toString();
+  const todo = db.prepare(todoSql).get();
   if (todo && title) {
     stmts.editTodo.run(title, id);
     res.redirect(`/lists/${todo.list_id}`);

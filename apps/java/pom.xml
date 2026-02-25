@@ -15,7 +15,7 @@
     <artifactId>todo</artifactId>
     <version>0.1.0</version>
     <name>todo</name>
-    <description>Retro Todo List - Spring Boot + SQLite</description>
+    <description>Retro Todo List - Spring Boot + ORMery + SQLite</description>
 
     <properties>
         <java.version>17</java.version>
@@ -29,7 +29,7 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -43,10 +43,16 @@
             <version>3.45.3.0</version>
         </dependency>
 
-        <!-- Hibernate Community Dialects (includes SQLite) -->
+        <!-- Temper runtime (required by ORMery vendored source) -->
         <dependency>
-            <groupId>org.hibernate.orm</groupId>
-            <artifactId>hibernate-community-dialects</artifactId>
+            <groupId>dev.temperlang</groupId>
+            <artifactId>temper-core</artifactId>
+            <version>0.6.0</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.temperlang</groupId>
+            <artifactId>temper-std</artifactId>
+            <version>0.6.0</version>
         </dependency>
 
         <!-- Test -->
@@ -59,6 +65,26 @@
 
     <build>
         <plugins>
+            <!-- Include vendored ORMery source as additional source directory -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>add-ormery-source</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.basedir}/vendor/ormery/src/main/java</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

@@ -1,6 +1,4 @@
-using Microsoft.EntityFrameworkCore;
 using TodoApp.Data;
-using TodoApp.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,34 +7,30 @@ builder.WebHost.UseUrls("http://localhost:5002");
 
 // Add services
 builder.Services.AddRazorPages();
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite("Data Source=todos.db"));
+builder.Services.AddSingleton(new TodoDb("Data Source=todos.db"));
 
 var app = builder.Build();
 
-// Auto-migrate and seed
-using (var scope = app.Services.CreateScope())
+// Auto-create tables and seed data
+var db = app.Services.GetRequiredService<TodoDb>();
+db.EnsureCreated();
+
+if (!db.HasAnyLists())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.EnsureCreated();
+    db.InsertList("Personal");
+    db.InsertList("Work");
 
-    if (!db.Lists.Any())
-    {
-        var personal = new TodoList { Name = "Personal", CreatedAt = DateTime.UtcNow };
-        var work = new TodoList { Name = "Work", CreatedAt = DateTime.UtcNow };
-        db.Lists.AddRange(personal, work);
-        db.SaveChanges();
+    // Get the lists we just created to grab their IDs
+    var lists = db.GetAllLists();
+    var personal = lists.First(l => l.Name == "Personal");
+    var work = lists.First(l => l.Name == "Work");
 
-        db.Todos.AddRange(
-            new TodoItem { Title = "Buy groceries", Completed = false, ListId = personal.Id, CreatedAt = DateTime.UtcNow },
-            new TodoItem { Title = "Walk the dog", Completed = true, ListId = personal.Id, CreatedAt = DateTime.UtcNow },
-            new TodoItem { Title = "Read a book", Completed = false, ListId = personal.Id, CreatedAt = DateTime.UtcNow },
-            new TodoItem { Title = "Finish quarterly report", Completed = false, ListId = work.Id, CreatedAt = DateTime.UtcNow },
-            new TodoItem { Title = "Review pull requests", Completed = true, ListId = work.Id, CreatedAt = DateTime.UtcNow },
-            new TodoItem { Title = "Update documentation", Completed = false, ListId = work.Id, CreatedAt = DateTime.UtcNow }
-        );
-        db.SaveChanges();
-    }
+    db.InsertTodo("Buy groceries", personal.Id);
+    db.InsertTodo("Walk the dog", personal.Id);
+    db.InsertTodo("Read a book", personal.Id);
+    db.InsertTodo("Finish quarterly report", work.Id);
+    db.InsertTodo("Review pull requests", work.Id);
+    db.InsertTodo("Update documentation", work.Id);
 }
 
 // Configure pipeline

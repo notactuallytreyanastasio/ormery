@@ -1,47 +1,26 @@
 package com.ormery.todo.model;
 
-import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "todos")
+/**
+ * Plain POJO for a todo item. No JPA annotations -- mapped via JDBC + ORMery.
+ */
 public class TodoItem {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(nullable = false)
     private String title;
-
-    @Column(nullable = false)
-    private Boolean completed = false;
-
-    @Column(name = "created_at", nullable = false)
+    private Boolean completed;
     private LocalDateTime createdAt;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "list_id", nullable = false)
-    private TodoList list;
+    private Long listId;
 
     public TodoItem() {
     }
 
-    public TodoItem(String title, TodoList list) {
+    public TodoItem(String title, Long listId) {
         this.title = title;
-        this.list = list;
+        this.listId = listId;
         this.completed = false;
         this.createdAt = LocalDateTime.now();
-    }
-
-    @PrePersist
-    protected void onCreate() {
-        if (createdAt == null) {
-            createdAt = LocalDateTime.now();
-        }
-        if (completed == null) {
-            completed = false;
-        }
     }
 
     public Long getId() {
@@ -76,11 +55,11 @@ public class TodoItem {
         this.createdAt = createdAt;
     }
 
-    public TodoList getList() {
-        return list;
+    public Long getListId() {
+        return listId;
     }
 
-    public void setList(TodoList list) {
-        this.list = list;
+    public void setListId(Long listId) {
+        this.listId = listId;
     }
 }

@@ -57,7 +57,7 @@ else
                 }
                 else
                 {
-                    @foreach (var todo in Model.TodoList.Todos.OrderBy(t => t.Completed).ThenBy(t => t.CreatedAt))
+                    @foreach (var todo in Model.TodoList.Todos)
                     {
                         <div class="todo-item @(todo.Completed ? "completed" : "")">
                             @if (Model.EditingTodoId == todo.Id)

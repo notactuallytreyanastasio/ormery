@@ -117,6 +117,13 @@
     }
     footer a { color: #666; }
     .summary-table td:first-child { font-weight: 600; }
+    .note {
+      background: #f0f7ff;
+      border-left: 3px solid #0066cc;
+      padding: 0.75rem 1rem;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.9rem;
+    }
   </style>
 </head>
 <body>
@@ -126,31 +133,54 @@
 <p class="subtitle">A query builder and ORM written in <a href="https://github.com/temperlang/temper">Temper</a> that compiles to six languages.</p>
 
 <p>
-  <a href="https://github.com/temperlang/temper">Temper</a> is a programming language that compiles to JavaScript, Python, C#, Rust, Java, and Lua. ORMery is a query builder and ORM written in Temper that produces injection-proof SQL via the <a href="https://github.com/nickreserved/secure-composition">secure-composition</a> library. To demonstrate how ORMery works across all six target languages, we built a retro-styled todo list app in each one, using the idiomatic web framework and database layer for that ecosystem.
+  <a href="https://github.com/temperlang/temper">Temper</a> is a programming language that compiles to JavaScript, Python, C#, Rust, Java, and Lua. ORMery is a query builder written in Temper that produces injection-proof SQL via contextual autoescaping. Write one ORM in Temper, get a native library for every target language&mdash;with the same API surface, the same safety guarantees, and the same generated SQL.
 </p>
 <p>
-  This page documents the demo apps, compares their ORM/querying APIs side by side, and explains the CI/CD pipeline that keeps everything in sync.
+  To demonstrate how ORMery works across all six target languages, we built a retro-styled todo list app in each one. Every app uses ORMery for schema definition, SELECT queries, and INSERT operations, with a thin SQLite driver for execution. This page documents the demo apps, shows ORMery's API side by side in each language, and explains the CI/CD pipeline that keeps everything in sync.
 </p>
 
-<h2>Demo Apps</h2>
+<h2>What ORMery Provides</h2>
 
-<p>Each app is a todo list manager with lists and todos, styled to look like Mac System 6 with Windows 95 windows. Same features, same schema, six different stacks.</p>
+<p>ORMery is a <strong>query builder</strong> compiled from a single Temper source to six languages. It provides:</p>
 
 <table>
-  <thead>
-    <tr><th>Language</th><th>Web Framework</th><th>ORM / DB Layer</th><th>Port</th><th>Repo</th></tr>
-  </thead>
+  <thead><tr><th>Function</th><th>Purpose</th></tr></thead>
   <tbody>
-    <tr><td>JavaScript</td><td>Express + EJS</td><td>better-sqlite3</td><td>5006</td><td><a href="https://github.com/notactuallytreyanastasio/ormery-js-app">ormery-js-app</a></td></tr>
-    <tr><td>Python</td><td>Flask + Jinja2</td><td>SQLAlchemy</td><td>5001</td><td><a href="https://github.com/notactuallytreyanastasio/ormery-py-app">ormery-py-app</a></td></tr>
-    <tr><td>C#</td><td>ASP.NET Core Razor</td><td>Entity Framework Core</td><td>5002</td><td><a href="https://github.com/notactuallytreyanastasio/ormery-csharp-app">ormery-csharp-app</a></td></tr>
-    <tr><td>Rust</td><td>Axum + Askama</td><td>SQLx</td><td>5003</td><td><a href="https://github.com/notactuallytreyanastasio/ormery-rust-app">ormery-rust-app</a></td></tr>
-    <tr><td>Java</td><td>Spring Boot + Thymeleaf</td><td>Spring Data JPA</td><td>5004</td><td><a href="https://github.com/notactuallytreyanastasio/ormery-java-app">ormery-java-app</a></td></tr>
-    <tr><td>Lua</td><td>LuaSocket (hand-rolled)</td><td>lsqlite3</td><td>5005</td><td><a href="https://github.com/notactuallytreyanastasio/ormery-lua-app">ormery-lua-app</a></td></tr>
+    <tr><td><code>schema(name, fields)</code></td><td>Define a table schema (auto-adds <code>id</code> primary key)</td></tr>
+    <tr><td><code>field(name, type, pk, nullable)</code></td><td>Define a column (<code>"String"</code> or <code>"Int"</code>)</td></tr>
+    <tr><td><code>Query(schema, store)</code></td><td>Build SELECT queries with <code>.where()</code>, <code>.orderBy()</code>, <code>.limit()</code></td></tr>
+    <tr><td><code>toInsertSql(schema, values)</code></td><td>Generate INSERT statements with autoescaped values</td></tr>
+    <tr><td><code>InMemoryStore</code></td><td>In-memory data store (also used as dummy arg for SQL-only generation)</td></tr>
   </tbody>
 </table>
 
-<h2>How the ORM Works in Each Language</h2>
+<div class="note">
+  <strong>Security by default:</strong> All string values are autoescaped through ORMery's <code>SqlFragment</code> type. Table and column names are validated against an allowlist of safe identifiers. SQL injection is structurally impossible.
+</div>
+
+<p>ORMery does <strong>not</strong> generate UPDATE, DELETE, or DDL (CREATE TABLE) SQL, nor does it support JOINs or aggregates. The demo apps use raw parameterized SQL for those operations.</p>
+
+<h2>Demo Apps</h2>
+
+<p>Each app is a todo list manager with lists and todos, styled to look like Mac System 6 with Windows 95 windows. Same features, same schema, six different stacks&mdash;all powered by the same ORMery query builder.</p>
+
+<table>
+  <thead>
+    <tr><th>Language</th><th>Web Framework</th><th>DB Driver</th><th>Port</th><th>Repo</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>JavaScript</td><td>Express + EJS</td><td>ORMery + better-sqlite3</td><td>5006</td><td><a href="https://github.com/notactuallytreyanastasio/ormery-js-app">ormery-js-app</a></td></tr>
+    <tr><td>Python</td><td>Flask + Jinja2</td><td>ORMery + sqlite3</td><td>5001</td><td><a href="https://github.com/notactuallytreyanastasio/ormery-py-app">ormery-py-app</a></td></tr>
+    <tr><td>C#</td><td>ASP.NET Core Razor</td><td>ORMery + Microsoft.Data.Sqlite</td><td>5002</td><td><a href="https://github.com/notactuallytreyanastasio/ormery-csharp-app">ormery-csharp-app</a></td></tr>
+    <tr><td>Rust</td><td>Axum + Askama</td><td>ORMery + rusqlite</td><td>5003</td><td><a href="https://github.com/notactuallytreyanastasio/ormery-rust-app">ormery-rust-app</a></td></tr>
+    <tr><td>Java</td><td>Spring Boot + Thymeleaf</td><td>ORMery + JDBC</td><td>5004</td><td><a href="https://github.com/notactuallytreyanastasio/ormery-java-app">ormery-java-app</a></td></tr>
+    <tr><td>Lua</td><td>LuaSocket (hand-rolled)</td><td>ORMery + lsqlite3</td><td>5005</td><td><a href="https://github.com/notactuallytreyanastasio/ormery-lua-app">ormery-lua-app</a></td></tr>
+  </tbody>
+</table>
+
+<h2>ORMery API in Each Language</h2>
+
+<p>Every app defines the same two schemas and uses the same ORMery operations. Here is how the API looks in each language.</p>
 
 <!-- JS -->
 <div class="lang-section">
@@ -158,27 +188,35 @@
     <h3>JavaScript</h3>
     <span class="lang-meta">Express + better-sqlite3 &middot; Port 5006</span>
   </div>
-  <p>better-sqlite3 uses synchronous prepared statements. Queries are pre-compiled with <code>db.prepare()</code> and executed with <code>.get()</code>, <code>.all()</code>, or <code>.run()</code>. Transactions are explicit via <code>db.transaction()</code>.</p>
+  <p>The JS app uses ESM imports. ORMery is vendored via <code>file:</code> protocol dependencies in <code>package.json</code>. Queries are generated by ORMery and executed with better-sqlite3's synchronous API.</p>
 
-<pre><code>// Prepared statements
-const stmts = {
-  allLists: db.prepare(`
-    SELECT l.*,
-      (SELECT COUNT(*) FROM todos WHERE list_id = l.id) AS todo_count,
-      (SELECT COUNT(*) FROM todos WHERE list_id = l.id AND completed = 1) AS done_count
-    FROM lists l ORDER BY l.created_at DESC
-  `),
-  getList:    db.prepare('SELECT * FROM lists WHERE id = ?'),
-  createList: db.prepare('INSERT INTO lists (name) VALUES (?)'),
-  toggleTodo: db.prepare(
-    'UPDATE todos SET completed = CASE WHEN completed = 1 THEN 0 ELSE 1 END WHERE id = ?'
-  ),
-};
+<pre><code>import { schema, field, Query, InMemoryStore, toInsertSql } from 'ormery';
 
-// Usage
-const lists = stmts.allLists.all();
-const list  = stmts.getList.get(id);
-stmts.createList.run(name);
+const store = new InMemoryStore();
+
+const listSchema = schema("lists", [
+  field("name", "String", false, false),
+  field("created_at", "String", false, true),
+]);
+
+const todoSchema = schema("todos", [
+  field("title", "String", false, false),
+  field("completed", "Int", false, false),
+  field("list_id", "Int", false, false),
+  field("created_at", "String", false, true),
+]);
+
+// SELECT with WHERE (ORMery)
+const sql = new Query(listSchema, store)
+  .where("id", "=", String(id)).toSql().toString();
+const list = db.prepare(sql).get();
+
+// INSERT (ORMery)
+const vals = new Map([["name", name]]);
+const insertSql = toInsertSql(listSchema, vals).toString();
+db.prepare(insertSql).run();
+
+// UPDATE (raw SQL - ORMery doesn't generate UPDATE)
 stmts.toggleTodo.run(id);</code></pre>
 </div>
 
@@ -186,121 +224,147 @@ stmts.toggleTodo.run(id);</code></pre>
 <div class="lang-section">
   <div class="lang-header">
     <h3>Python</h3>
-    <span class="lang-meta">Flask + SQLAlchemy &middot; Port 5001</span>
+    <span class="lang-meta">Flask + sqlite3 &middot; Port 5001</span>
   </div>
-  <p>SQLAlchemy uses declarative model classes. Columns are defined with <code>db.Column()</code>, relationships with <code>db.relationship()</code>. Queries use a fluent, chainable API.</p>
+  <p>The Python app uses the stdlib <code>sqlite3</code> module (no SQLAlchemy). ORMery is imported from vendor directories via <code>sys.path</code>. Value maps for inserts are built using <code>temper_core.Pair</code> and <code>map_constructor</code>.</p>
 
-<pre><code>class List(db.Model):
-    __tablename__ = "lists"
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(120), nullable=False)
-    todos = db.relationship("Todo", backref="list", cascade="all, delete-orphan")
+<pre><code>from ormery.ormery import schema, field, Query, InMemoryStore, to_insert_sql
+from temper_core import Pair, map_constructor
 
-# Query
-lists = List.query.order_by(List.created_at.asc()).all()
-lst = db.get_or_404(List, list_id)
-done = Todo.query.filter_by(list_id=lst.id, completed=True).count()
+store = InMemoryStore()
+list_schema = schema("lists", [
+    field("name", "String", False, False),
+    field("created_at", "String", False, True),
+])
 
-# CRUD
-db.session.add(List(name="Work"))
-db.session.commit()
-todo.completed = not todo.completed
-db.session.commit()
-db.session.delete(lst)
-db.session.commit()</code></pre>
+# SELECT with WHERE + ORDER BY (ORMery)
+sql = (Query(todo_schema, store)
+    .where("list_id", "=", str(list_id))
+    .order_by("completed", "asc")
+    .order_by("created_at", "desc")
+    .to_sql().to_string())
+todos = conn.execute(sql).fetchall()
+
+# INSERT (ORMery)
+vals = map_constructor([Pair("name", name)])
+sql = to_insert_sql(list_schema, vals).to_string()
+conn.execute(sql)
+
+# UPDATE (raw SQL)
+conn.execute("UPDATE todos SET completed = ? WHERE id = ?",
+             (new_val, todo_id))</code></pre>
 </div>
 
 <!-- C# -->
 <div class="lang-section">
   <div class="lang-header">
     <h3>C#</h3>
-    <span class="lang-meta">ASP.NET Core + EF Core &middot; Port 5002</span>
+    <span class="lang-meta">ASP.NET Core + Microsoft.Data.Sqlite &middot; Port 5002</span>
   </div>
-  <p>EF Core uses POCO model classes configured via a Fluent API in <code>DbContext.OnModelCreating()</code>. Queries use LINQ with async methods.</p>
+  <p>The C# app uses Microsoft.Data.Sqlite (no EF Core). ORMery is referenced via <code>ProjectReference</code> to the vendored <code>Ormery.csproj</code>. Value maps use <code>Mapped.ConstructMap</code> with <code>Listed.CreateReadOnlyList</code>.</p>
 
-<pre><code>public class TodoList {
-    public int Id { get; set; }
-    [Required] [StringLength(100)]
-    public string Name { get; set; } = string.Empty;
-    public List&lt;TodoItem&gt; Todos { get; set; } = new();
-}
+<pre><code>using Ormery;
+using TemperLang.Core;
 
-// Fluent API
-entity.HasOne(e =&gt; e.List)
-      .WithMany(l =&gt; l.Todos)
-      .OnDelete(DeleteBehavior.Cascade);
+var listSchema = OrmeryGlobal.Schema("lists",
+    Listed.CreateReadOnlyList&lt;Field&gt;(
+        OrmeryGlobal.Field("name", "String", false, false),
+        OrmeryGlobal.Field("created_at", "String", false, false)
+    ));
 
-// LINQ queries
-var lists = await _db.Lists.Include(l =&gt; l.Todos)
-    .OrderBy(l =&gt; l.CreatedAt).ToListAsync();
-var list = await _db.Lists.FindAsync(id);
+// SELECT with WHERE (ORMery)
+var query = new Query(ListSchema, _dummyStore)
+    .Where("id", "=", id.ToString());
+string sql = query.ToSql().ToString();
+var list = cmd.ExecuteReader();
 
-// CRUD
-_db.Lists.Add(new TodoList { Name = name });
-await _db.SaveChangesAsync();
-_db.Lists.Remove(list);
-await _db.SaveChangesAsync();</code></pre>
+// INSERT (ORMery)
+var values = Mapped.ConstructMap(
+    Listed.CreateReadOnlyList&lt;KeyValuePair&lt;string, string&gt;&gt;(
+        new KeyValuePair&lt;string, string&gt;("name", name),
+        new KeyValuePair&lt;string, string&gt;("created_at", now)
+    ));
+string sql = OrmeryGlobal.ToInsertSql(ListSchema, values).ToString();
+
+// UPDATE (raw SQL with SqlBuilder for safe escaping)
+var sb = new SqlBuilder();
+sb.AppendSafe("UPDATE lists SET name = ");
+sb.AppendString(name);
+sb.AppendSafe(" WHERE id = ");
+sb.AppendInt32(id);</code></pre>
 </div>
 
 <!-- Rust -->
 <div class="lang-section">
   <div class="lang-header">
     <h3>Rust</h3>
-    <span class="lang-meta">Axum + SQLx &middot; Port 5003</span>
+    <span class="lang-meta">Axum + rusqlite &middot; Port 5003</span>
   </div>
-  <p>SQLx maps SQL rows directly to Rust structs via <code>#[derive(FromRow)]</code>. Queries are raw SQL with typed <code>.bind()</code> parameters.</p>
+  <p>The Rust app uses rusqlite (no SQLx). ORMery is a path dependency in <code>Cargo.toml</code>. Note <code>r#where</code>&mdash;<code>where</code> is a Rust keyword, so the raw identifier syntax is required.</p>
 
-<pre><code>#[derive(Debug, FromRow)]
-struct TodoList {
-    id: i64,
-    name: String,
-    created_at: Option&lt;String&gt;,
-}
+<pre><code>use ormery::{schema, field, Query, InMemoryStore, to_insert_sql};
 
-// Queries
-let list: TodoList = sqlx::query_as(
-    "SELECT id, name, created_at FROM lists WHERE id = ?"
-).bind(id).fetch_one(&amp;pool).await?;
+let list_schema = schema("lists".to_string(), vec![
+    field("name".to_string(), "String".to_string(), false, false),
+    field("created_at".to_string(), "String".to_string(), false, true),
+]);
 
-// CRUD
-sqlx::query("INSERT INTO lists (name) VALUES (?)")
-    .bind(&amp;name).execute(&amp;pool).await?;
-sqlx::query("UPDATE todos SET completed = ? WHERE id = ?")
-    .bind(!completed).bind(id).execute(&amp;pool).await?;
-sqlx::query("DELETE FROM todos WHERE id = ?")
-    .bind(id).execute(&amp;pool).await?;</code></pre>
+// SELECT with WHERE (ORMery) - note r#where for Rust keyword
+let sql = Query::new(list_schema.clone(), store.clone())
+    .r#where("id", "=", id.to_string())
+    .to_sql().to_string().to_string();
+let list = conn.query_row(&amp;sql, [], |row| { ... })?;
+
+// INSERT (ORMery)
+let values = temper_core::Map::new(&amp;[
+    (Arc::new("name".to_string()), Arc::new(name.to_string())),
+]);
+let sql = to_insert_sql(list_schema.clone(), values)
+    .to_string().to_string();
+conn.execute(&amp;sql, [])?;
+
+// UPDATE (raw SQL)
+conn.execute("UPDATE todos SET completed = ?1 WHERE id = ?2",
+    rusqlite::params![!completed as i64, id])?;</code></pre>
 </div>
 
 <!-- Java -->
 <div class="lang-section">
   <div class="lang-header">
     <h3>Java</h3>
-    <span class="lang-meta">Spring Boot + JPA &middot; Port 5004</span>
+    <span class="lang-meta">Spring Boot + JDBC &middot; Port 5004</span>
   </div>
-  <p>JPA uses <code>@Entity</code> annotations. Spring Data generates repository implementations from interface method names&mdash;just name a method and Spring writes the SQL.</p>
+  <p>The Java app uses Spring JDBC (no JPA). ORMery source is compiled as an additional Maven source directory. Value maps use <code>ormery.MapConstructor</code>.</p>
 
-<pre><code>@Entity @Table(name = "todos")
-public class TodoItem {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    @Column(nullable = false)
-    private String title;
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "list_id")
-    private TodoList list;
-}
+<pre><code>import ormery.OrmeryGlobal;
+import ormery.Query;
+import ormery.Schema;
+import ormery.InMemoryStore;
 
-// Derived query: Spring generates SQL from the method name
-@Repository
-public interface TodoItemRepository extends JpaRepository&lt;TodoItem, Long&gt; {
-    List&lt;TodoItem&gt; findByListIdOrderByCreatedAtAsc(Long listId);
-}
+Schema listSchema = OrmeryGlobal.schema("lists", List.of(
+    OrmeryGlobal.field("name", "String", false, false),
+    OrmeryGlobal.field("created_at", "String", false, true)
+));
 
-// CRUD
-listRepository.save(new TodoList(name));
-item.setCompleted(!item.getCompleted());
-itemRepository.save(item);
-listRepository.deleteById(id);</code></pre>
+// SELECT with WHERE + ORDER BY (ORMery)
+String sql = new Query(todoSchema, store)
+    .where("list_id", "=", String.valueOf(listId))
+    .orderBy("completed", "asc")
+    .orderBy("created_at", "desc")
+    .toSql().toString();
+List&lt;TodoItem&gt; todos = jdbc.query(sql, todoRowMapper);
+
+// INSERT (ORMery)
+var values = MapConstructor.construct(List.of(
+    new Pair&lt;&gt;("name", name),
+    new Pair&lt;&gt;("created_at", now)
+));
+String sql = OrmeryGlobal.toInsertSql(listSchema, values).toString();
+jdbc.update(sql);
+
+// UPDATE (raw SQL)
+jdbc.update("UPDATE todos SET completed = CASE WHEN completed = 0 "
+    + "THEN 1 ELSE 0 END WHERE id = ?", id);</code></pre>
 </div>
 
 <!-- Lua -->
@@ -309,55 +373,61 @@ listRepository.deleteById(id);</code></pre>
     <h3>Lua</h3>
     <span class="lang-meta">LuaSocket + lsqlite3 &middot; Port 5005</span>
   </div>
-  <p>Lua has no ORM. The <code>db.lua</code> module wraps raw SQLite3 calls with prepared statements and manual row mapping&mdash;the most bare-metal approach.</p>
+  <p>The Lua app loads ORMery via <code>package.path</code> from vendor directories. Helper functions wrap ORMery's API for the Lua-idiomatic table-based style.</p>
 
-<pre><code>function db.lists_get_by_id(id)
-    local stmt = conn:prepare("SELECT id, name FROM lists WHERE id = ?")
-    stmt:bind_values(id)
-    local result = nil
-    if stmt:step() == sqlite3.ROW then
-        result = { id = stmt:get_value(0), name = stmt:get_value(1) }
-    end
-    stmt:finalize()
-    return result
-end
+<pre><code>local ormery = require('ormery.init')
 
--- Toggle: arithmetic flip (1 - 0 = 1, 1 - 1 = 0)
-function db.todos_toggle(id)
-    local stmt = conn:prepare("UPDATE todos SET completed = 1 - completed WHERE id = ?")
-    stmt:bind_values(id)
-    stmt:step()
-    stmt:finalize()
-end</code></pre>
+local list_schema = ormery.schema("lists", {
+    ormery.field("name", "String", false, false),
+    ormery.field("created_at", "String", false, true),
+})
+
+-- SELECT with WHERE + ORDER BY (ORMery)
+local sql = ormery.Query(todo_schema, store)
+    :where("list_id", "=", tostring(list_id))
+    :order_by("completed", "asc")
+    :order_by("created_at", "desc")
+    :to_sql():to_string()
+local stmt = conn:prepare(sql)
+
+-- INSERT (ORMery)
+local values = make_values({name = name})
+local sql = ormery.to_insert_sql(list_schema, values):to_string()
+conn:exec(sql)
+
+-- UPDATE (raw SQL)
+local stmt = conn:prepare(
+    "UPDATE todos SET completed = 1 - completed WHERE id = ?")
+stmt:bind_values(id)</code></pre>
 </div>
 
 <h2>Querying API Comparison</h2>
 
-<h3>Abstraction Levels</h3>
-<table class="summary-table">
-  <thead>
-    <tr><th>Language</th><th>Abstraction</th><th>Query Style</th><th>Type Safety</th><th>Relationships</th></tr>
-  </thead>
-  <tbody>
-    <tr><td>JS</td><td>None (raw SQL)</td><td>Sync prepared statements</td><td>None</td><td>Manual transaction</td></tr>
-    <tr><td>Python</td><td>High</td><td>Fluent ORM API</td><td>Runtime</td><td><code>relationship()</code></td></tr>
-    <tr><td>C#</td><td>High</td><td>LINQ expressions</td><td>Compile-time</td><td>Fluent API</td></tr>
-    <tr><td>Rust</td><td>Low (mapper)</td><td>Raw SQL + bind</td><td>Compile-time</td><td>Manual / DDL</td></tr>
-    <tr><td>Java</td><td>High</td><td>Derived query methods</td><td>Compile-time</td><td>JPA annotations</td></tr>
-    <tr><td>Lua</td><td>None (raw SQL)</td><td>Prepared statements</td><td>None</td><td>DDL foreign keys</td></tr>
-  </tbody>
-</table>
+<p>Because ORMery is compiled from the same Temper source, the API is structurally identical across all six languages&mdash;only the syntax changes to match each language's conventions.</p>
 
-<h3>SELECT by ID</h3>
+<h3>Schema Definition</h3>
 <table>
   <thead><tr><th>Language</th><th>Code</th></tr></thead>
   <tbody>
-    <tr><td>JS</td><td><code>db.prepare('SELECT * FROM lists WHERE id = ?').get(id)</code></td></tr>
-    <tr><td>Python</td><td><code>db.get_or_404(List, list_id)</code></td></tr>
-    <tr><td>C#</td><td><code>await _db.Lists.FindAsync(id)</code></td></tr>
-    <tr><td>Rust</td><td><code>sqlx::query_as("...WHERE id = ?").bind(id).fetch_one(&amp;pool).await?</code></td></tr>
-    <tr><td>Java</td><td><code>listRepository.findById(id).orElse(null)</code></td></tr>
-    <tr><td>Lua</td><td><code>stmt:bind_values(id); stmt:step(); stmt:get_value(0)</code></td></tr>
+    <tr><td>JS</td><td><code>schema("lists", [field("name", "String", false, false)])</code></td></tr>
+    <tr><td>Python</td><td><code>schema("lists", [field("name", "String", False, False)])</code></td></tr>
+    <tr><td>C#</td><td><code>OrmeryGlobal.Schema("lists", Listed.CreateReadOnlyList&lt;Field&gt;(OrmeryGlobal.Field(...)))</code></td></tr>
+    <tr><td>Rust</td><td><code>schema("lists".to_string(), vec![field("name".to_string(), ...)])</code></td></tr>
+    <tr><td>Java</td><td><code>OrmeryGlobal.schema("lists", List.of(OrmeryGlobal.field(...)))</code></td></tr>
+    <tr><td>Lua</td><td><code>ormery.schema("lists", {ormery.field("name", "String", false, false)})</code></td></tr>
+  </tbody>
+</table>
+
+<h3>SELECT with WHERE</h3>
+<table>
+  <thead><tr><th>Language</th><th>Code</th></tr></thead>
+  <tbody>
+    <tr><td>JS</td><td><code>new Query(schema, store).where("id", "=", String(id)).toSql().toString()</code></td></tr>
+    <tr><td>Python</td><td><code>Query(schema, store).where("id", "=", str(id)).to_sql().to_string()</code></td></tr>
+    <tr><td>C#</td><td><code>new Query(schema, store).Where("id", "=", id.ToString()).ToSql().ToString()</code></td></tr>
+    <tr><td>Rust</td><td><code>Query::new(schema, store).r#where("id", "=", id.to_string()).to_sql().to_string()</code></td></tr>
+    <tr><td>Java</td><td><code>new Query(schema, store).where("id", "=", String.valueOf(id)).toSql().toString()</code></td></tr>
+    <tr><td>Lua</td><td><code>ormery.Query(schema, store):where("id", "=", tostring(id)):to_sql():to_string()</code></td></tr>
   </tbody>
 </table>
 
@@ -365,42 +435,29 @@ end</code></pre>
 <table>
   <thead><tr><th>Language</th><th>Code</th></tr></thead>
   <tbody>
-    <tr><td>JS</td><td><code>db.prepare('INSERT INTO lists (name) VALUES (?)').run(name)</code></td></tr>
-    <tr><td>Python</td><td><code>db.session.add(List(name="Work")); db.session.commit()</code></td></tr>
-    <tr><td>C#</td><td><code>_db.Lists.Add(new TodoList { Name = name }); await _db.SaveChangesAsync()</code></td></tr>
-    <tr><td>Rust</td><td><code>sqlx::query("INSERT INTO lists (name) VALUES (?)").bind(&amp;name).execute(&amp;pool).await?</code></td></tr>
-    <tr><td>Java</td><td><code>listRepository.save(new TodoList(name))</code></td></tr>
-    <tr><td>Lua</td><td><code>stmt = conn:prepare("INSERT INTO lists (name) VALUES (?)"); stmt:bind_values(name); stmt:step()</code></td></tr>
+    <tr><td>JS</td><td><code>toInsertSql(schema, new Map([["name", name]])).toString()</code></td></tr>
+    <tr><td>Python</td><td><code>to_insert_sql(schema, map_constructor([Pair("name", name)])).to_string()</code></td></tr>
+    <tr><td>C#</td><td><code>OrmeryGlobal.ToInsertSql(schema, Mapped.ConstructMap(Listed.CreateReadOnlyList&lt;KVP&gt;(...))).ToString()</code></td></tr>
+    <tr><td>Rust</td><td><code>to_insert_sql(schema, Map::new(&amp;[(Arc::new("name".into()), Arc::new(name))])).to_string()</code></td></tr>
+    <tr><td>Java</td><td><code>OrmeryGlobal.toInsertSql(schema, MapConstructor.construct(List.of(new Pair&lt;&gt;(...)))).toString()</code></td></tr>
+    <tr><td>Lua</td><td><code>ormery.to_insert_sql(schema, make_values({name = name})):to_string()</code></td></tr>
   </tbody>
 </table>
 
-<h3>UPDATE (Toggle)</h3>
-<table>
-  <thead><tr><th>Language</th><th>Code</th></tr></thead>
+<h3>What ORMery Handles vs. Raw SQL</h3>
+<table class="summary-table">
+  <thead>
+    <tr><th>Operation</th><th>ORMery?</th><th>Notes</th></tr>
+  </thead>
   <tbody>
-    <tr><td>JS</td><td><code>db.prepare('UPDATE todos SET completed = CASE WHEN completed = 1 THEN 0 ELSE 1 END WHERE id = ?').run(id)</code></td></tr>
-    <tr><td>Python</td><td><code>todo.completed = not todo.completed; db.session.commit()</code></td></tr>
-    <tr><td>C#</td><td><code>todo.Completed = !todo.Completed; await _db.SaveChangesAsync()</code></td></tr>
-    <tr><td>Rust</td><td><code>sqlx::query("UPDATE todos SET completed = ? WHERE id = ?").bind(!completed).bind(id).execute(&amp;pool).await?</code></td></tr>
-    <tr><td>Java</td><td><code>item.setCompleted(!item.getCompleted()); itemRepository.save(item)</code></td></tr>
-    <tr><td>Lua</td><td><code>conn:prepare("UPDATE todos SET completed = 1 - completed WHERE id = ?"):bind_values(id)</code></td></tr>
+    <tr><td>SELECT</td><td>Yes</td><td><code>Query.where().orderBy().limit().toSql()</code></td></tr>
+    <tr><td>INSERT</td><td>Yes</td><td><code>toInsertSql(schema, values)</code> with autoescaped values</td></tr>
+    <tr><td>UPDATE</td><td>No</td><td>Raw parameterized SQL or <code>SqlBuilder</code></td></tr>
+    <tr><td>DELETE</td><td>No</td><td>Raw parameterized SQL or <code>SqlBuilder</code></td></tr>
+    <tr><td>CREATE TABLE</td><td>No</td><td>Raw DDL</td></tr>
+    <tr><td>JOINs / Aggregates</td><td>No</td><td>Raw SQL (COUNT, SUM, LEFT JOIN)</td></tr>
   </tbody>
 </table>
-
-<h3>DELETE with Cascades</h3>
-<table>
-  <thead><tr><th>Language</th><th>Cascade Mechanism</th><th>Code</th></tr></thead>
-  <tbody>
-    <tr><td>JS</td><td>Manual transaction</td><td><code>db.transaction(() => { deleteTodos(id); deleteList(id); })()</code></td></tr>
-    <tr><td>Python</td><td><code>cascade="all, delete-orphan"</code></td><td><code>db.session.delete(lst); db.session.commit()</code></td></tr>
-    <tr><td>C#</td><td><code>OnDelete(Cascade)</code></td><td><code>_db.Lists.Remove(list); await _db.SaveChangesAsync()</code></td></tr>
-    <tr><td>Rust</td><td>Manual (two queries)</td><td><code>DELETE todos WHERE list_id=?; DELETE lists WHERE id=?</code></td></tr>
-    <tr><td>Java</td><td><code>@OneToMany(cascade=ALL)</code></td><td><code>listRepository.deleteById(id)</code></td></tr>
-    <tr><td>Lua</td><td>DDL <code>ON DELETE CASCADE</code></td><td><code>conn:prepare("DELETE FROM lists WHERE id = ?")</code></td></tr>
-  </tbody>
-</table>
-
-<p>The spectrum runs from <strong>Java</strong> (most abstract&mdash;name a method and Spring generates the query) through <strong>Python/C#</strong> (fluent ORM APIs) to <strong>Rust</strong> (type-safe SQL mapper) to <strong>JS/Lua</strong> (raw prepared statements with manual row mapping).</p>
 
 <h2>The Pipeline</h2>
 
@@ -417,12 +474,12 @@ end</code></pre>
     |
     +-- Matrix: 6 parallel jobs (one per language)
             |
-            +--&gt; ormery-js       (ormery/ subdir only)
-            +--&gt; ormery-py       (ormery/ subdir only)
+            +--&gt; ormery-js       (full tree: ormery + std + temper-core)
+            +--&gt; ormery-py       (full tree: ormery + std + temper-core)
             +--&gt; ormery-csharp   (full tree: ormery + std + temper-core)
             +--&gt; ormery-rust     (full tree: ormery + std + temper-core)
-            +--&gt; ormery-java     (ormery/ subdir only)
-            +--&gt; ormery-lua      (ormery/ subdir only)
+            +--&gt; ormery-java     (full tree: ormery + std + temper-core)
+            +--&gt; ormery-lua      (full tree: ormery + std + temper-core)
                     |
                     v
               Each lib repo has: notify-app.yml
@@ -434,7 +491,9 @@ end</code></pre>
                     +--&gt; ormery-java-app
                     +--&gt; ormery-lua-app</div>
 
-<p><strong>Why two tiers?</strong> Rust and C# need the full <code>temper.out/{lang}/</code> tree because their package files use local path dependencies (<code>path = "../temper-core"</code>). The other four languages use registry dependencies and only need the <code>ormery/</code> subdirectory.</p>
+<p><strong>Full tree for all languages:</strong> Every lib repo receives the complete <code>temper.out/{lang}/</code> tree containing <code>ormery/</code>, <code>std/</code>, and <code>temper-core/</code>. This ensures the vendored ORMery library and its Temper runtime dependencies resolve correctly in every language ecosystem.</p>
+
+<p><strong>Vendoring:</strong> Each demo app vendors the compiled ORMery library in a <code>vendor/</code> directory. The app's build system references vendor paths directly (e.g., <code>"ormery": "file:./vendor/ormery"</code> in JS, <code>path = "vendor/ormery"</code> in Rust, <code>ProjectReference</code> in C#). When the pipeline updates a lib repo, the app repo pulls the latest compiled output into its vendor directory.</p>
 
 <p><strong>Authentication:</strong> Cross-repo pushes use SSH deploy keys (not PATs). Each target repo has a deploy key with write access. The private keys are stored as GitHub Actions secrets on the source repo. This is the same pattern used by <a href="https://github.com/notactuallytreyanastasio/deciduous">Deciduous</a> for its Homebrew tap.</p>
 
@@ -442,7 +501,7 @@ end</code></pre>
 
 <p><strong>Tier 1: <code>publish-libs.yml</code></strong> (on ormery) &mdash; Triggered on push to main. Clones the Temper compiler, builds it with Gradle, runs <code>temper build</code> to produce <code>temper.out/</code>, then syncs each language's compiled output to its lib repo via SSH.</p>
 
-<p><strong>Tier 2: <code>notify-app.yml</code></strong> (on each lib repo) &mdash; Triggered when the lib repo receives a push. Clones the corresponding app repo via SSH and bumps the <code>LIB_VERSION</code> file to record the new lib commit SHA.</p>
+<p><strong>Tier 2: <code>notify-app.yml</code></strong> (on each lib repo) &mdash; Triggered when the lib repo receives a push. Clones the corresponding app repo via SSH and updates the <code>vendor/</code> directory with the latest compiled ORMery output.</p>
 
 <h2>Repositories</h2>
 
@@ -451,12 +510,12 @@ end</code></pre>
 <table>
   <thead><tr><th>Repo</th><th>Language</th><th>Contents</th></tr></thead>
   <tbody>
-    <tr><td><a href="https://github.com/notactuallytreyanastasio/ormery-js">ormery-js</a></td><td>JavaScript</td><td>ormery/ subdir</td></tr>
-    <tr><td><a href="https://github.com/notactuallytreyanastasio/ormery-py">ormery-py</a></td><td>Python</td><td>ormery/ subdir</td></tr>
-    <tr><td><a href="https://github.com/notactuallytreyanastasio/ormery-csharp">ormery-csharp</a></td><td>C#</td><td>Full tree (path deps)</td></tr>
-    <tr><td><a href="https://github.com/notactuallytreyanastasio/ormery-rust">ormery-rust</a></td><td>Rust</td><td>Full tree (path deps)</td></tr>
-    <tr><td><a href="https://github.com/notactuallytreyanastasio/ormery-java">ormery-java</a></td><td>Java</td><td>ormery/ subdir</td></tr>
-    <tr><td><a href="https://github.com/notactuallytreyanastasio/ormery-lua">ormery-lua</a></td><td>Lua</td><td>ormery/ subdir</td></tr>
+    <tr><td><a href="https://github.com/notactuallytreyanastasio/ormery-js">ormery-js</a></td><td>JavaScript</td><td>Full tree (ormery + std + temper-core)</td></tr>
+    <tr><td><a href="https://github.com/notactuallytreyanastasio/ormery-py">ormery-py</a></td><td>Python</td><td>Full tree (ormery + std + temper-core)</td></tr>
+    <tr><td><a href="https://github.com/notactuallytreyanastasio/ormery-csharp">ormery-csharp</a></td><td>C#</td><td>Full tree (ormery + std + temper-core)</td></tr>
+    <tr><td><a href="https://github.com/notactuallytreyanastasio/ormery-rust">ormery-rust</a></td><td>Rust</td><td>Full tree (ormery + std + temper-core)</td></tr>
+    <tr><td><a href="https://github.com/notactuallytreyanastasio/ormery-java">ormery-java</a></td><td>Java</td><td>Full tree (ormery + std + temper-core)</td></tr>
+    <tr><td><a href="https://github.com/notactuallytreyanastasio/ormery-lua">ormery-lua</a></td><td>Lua</td><td>Full tree (ormery + std + temper-core)</td></tr>
   </tbody>
 </table>
 
@@ -465,19 +524,19 @@ end</code></pre>
 <table>
   <thead><tr><th>Repo</th><th>Stack</th><th>Port</th></tr></thead>
   <tbody>
-    <tr><td><a href="https://github.com/notactuallytreyanastasio/ormery-js-app">ormery-js-app</a></td><td>Express + better-sqlite3 + EJS</td><td>5006</td></tr>
-    <tr><td><a href="https://github.com/notactuallytreyanastasio/ormery-py-app">ormery-py-app</a></td><td>Flask + SQLAlchemy + Jinja2</td><td>5001</td></tr>
-    <tr><td><a href="https://github.com/notactuallytreyanastasio/ormery-csharp-app">ormery-csharp-app</a></td><td>ASP.NET Core + EF Core + Razor</td><td>5002</td></tr>
-    <tr><td><a href="https://github.com/notactuallytreyanastasio/ormery-rust-app">ormery-rust-app</a></td><td>Axum + SQLx + Askama</td><td>5003</td></tr>
-    <tr><td><a href="https://github.com/notactuallytreyanastasio/ormery-java-app">ormery-java-app</a></td><td>Spring Boot + JPA + Thymeleaf</td><td>5004</td></tr>
-    <tr><td><a href="https://github.com/notactuallytreyanastasio/ormery-lua-app">ormery-lua-app</a></td><td>LuaSocket + lsqlite3</td><td>5005</td></tr>
+    <tr><td><a href="https://github.com/notactuallytreyanastasio/ormery-js-app">ormery-js-app</a></td><td>Express + ORMery + better-sqlite3 + EJS</td><td>5006</td></tr>
+    <tr><td><a href="https://github.com/notactuallytreyanastasio/ormery-py-app">ormery-py-app</a></td><td>Flask + ORMery + sqlite3 + Jinja2</td><td>5001</td></tr>
+    <tr><td><a href="https://github.com/notactuallytreyanastasio/ormery-csharp-app">ormery-csharp-app</a></td><td>ASP.NET Core + ORMery + Microsoft.Data.Sqlite + Razor</td><td>5002</td></tr>
+    <tr><td><a href="https://github.com/notactuallytreyanastasio/ormery-rust-app">ormery-rust-app</a></td><td>Axum + ORMery + rusqlite + Askama</td><td>5003</td></tr>
+    <tr><td><a href="https://github.com/notactuallytreyanastasio/ormery-java-app">ormery-java-app</a></td><td>Spring Boot + ORMery + JDBC + Thymeleaf</td><td>5004</td></tr>
+    <tr><td><a href="https://github.com/notactuallytreyanastasio/ormery-lua-app">ormery-lua-app</a></td><td>LuaSocket + ORMery + lsqlite3</td><td>5005</td></tr>
   </tbody>
 </table>
 
 <footer>
   <p>
     Built with <a href="https://github.com/temperlang/temper">Temper</a> &middot;
-    SQL escaping by <a href="https://github.com/nickreserved/secure-composition">secure-composition</a> &middot;
+    SQL escaping via contextual autoescaping &middot;
     Decision tracking via <a href="https://github.com/notactuallytreyanastasio/deciduous">Deciduous</a> &middot;
     Source: <a href="https://github.com/notactuallytreyanastasio/ormery">ormery</a>
   </p>
