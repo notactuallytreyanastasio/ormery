@@ -207,6 +207,34 @@ Three variants, all served from `tutorial/`:
 make serve && make open    # starts server and opens interactive playground
 ```
 
+## Satellite Repositories
+
+The CI pipeline compiles ORMery to six languages and distributes each to its own repo. Each lib repo has a companion demo app.
+
+**[View the full project documentation](https://notactuallytreyanastasio.github.io/ormery/)**
+
+### Compiled Libraries
+
+| Repo | Language | Contents |
+|------|----------|----------|
+| [ormery-js](https://github.com/notactuallytreyanastasio/ormery-js) | JavaScript | ormery/ subdir |
+| [ormery-py](https://github.com/notactuallytreyanastasio/ormery-py) | Python | ormery/ subdir |
+| [ormery-csharp](https://github.com/notactuallytreyanastasio/ormery-csharp) | C# | Full tree (path deps) |
+| [ormery-rust](https://github.com/notactuallytreyanastasio/ormery-rust) | Rust | Full tree (path deps) |
+| [ormery-java](https://github.com/notactuallytreyanastasio/ormery-java) | Java | ormery/ subdir |
+| [ormery-lua](https://github.com/notactuallytreyanastasio/ormery-lua) | Lua | ormery/ subdir |
+
+### Demo Apps
+
+| Repo | Stack | Port |
+|------|-------|------|
+| [ormery-js-app](https://github.com/notactuallytreyanastasio/ormery-js-app) | Express + better-sqlite3 + EJS | 5006 |
+| [ormery-py-app](https://github.com/notactuallytreyanastasio/ormery-py-app) | Flask + SQLAlchemy + Jinja2 | 5001 |
+| [ormery-csharp-app](https://github.com/notactuallytreyanastasio/ormery-csharp-app) | ASP.NET Core + EF Core + Razor | 5002 |
+| [ormery-rust-app](https://github.com/notactuallytreyanastasio/ormery-rust-app) | Axum + SQLx + Askama | 5003 |
+| [ormery-java-app](https://github.com/notactuallytreyanastasio/ormery-java-app) | Spring Boot + JPA + Thymeleaf | 5004 |
+| [ormery-lua-app](https://github.com/notactuallytreyanastasio/ormery-lua-app) | LuaSocket + lsqlite3 | 5005 |
+
 ## Acknowledgments
 
 - Inspired by [Ecto](https://hexdocs.pm/ecto/Ecto.html) from the Elixir ecosystem
